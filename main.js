@@ -82,6 +82,11 @@ const loadingSettings = {
     overlayColor: '#000000' // Overlay color
 };
 
+// FPS Overlay Settings
+const fpsOverlaySettings = {
+    enabled: true
+};
+
 // --- Ocean & Sky Globals ---
 let water, sky, sun;
 let pmremGenerator;
@@ -290,7 +295,7 @@ function _scheduleMusicIfEnabled() {
                 p.catch(() => {
                     // If blocked, add a one-time listener to play
                     const unlock = () => {
-                        musicAudio.play().catch(() => {});
+                        musicAudio.play().catch(() => { });
                         window.removeEventListener('pointerdown', unlock);
                         window.removeEventListener('keydown', unlock);
                     };
@@ -317,7 +322,7 @@ function _scheduleSeashoreIfEnabled() {
             if (p && typeof p.catch === 'function') {
                 p.catch(() => {
                     const unlock = () => {
-                        seashoreAudio.play().catch(() => {});
+                        seashoreAudio.play().catch(() => { });
                         window.removeEventListener('pointerdown', unlock);
                         window.removeEventListener('keydown', unlock);
                     };
@@ -459,6 +464,9 @@ function getAllSettings() {
         },
         cameraControls: {
             disabled: cameraControlsDisabled
+        },
+        fpsOverlay: {
+            enabled: !!fpsOverlaySettings.enabled
         }
     };
 }
@@ -489,6 +497,17 @@ function applyAllSettings(data) {
         }
     }
 
+    if (data.fpsOverlay) {
+        if (typeof data.fpsOverlay.enabled === 'boolean') fpsOverlaySettings.enabled = data.fpsOverlay.enabled;
+        const fpsCheckbox = document.getElementById('fps-overlay-enabled');
+        if (fpsCheckbox) fpsCheckbox.checked = fpsOverlaySettings.enabled;
+
+        const fpsOverlayDiv = document.getElementById('fps-overlay');
+        if (fpsOverlayDiv) {
+            fpsOverlayDiv.style.display = (userEnteredScene && fpsOverlaySettings.enabled) ? 'block' : 'none';
+        }
+    }
+
     if (data.music) {
         if (typeof data.music.enabled === 'boolean') musicSettings.enabled = data.music.enabled;
         if (typeof data.music.delaySec === 'number') musicSettings.delaySec = data.music.delaySec;
@@ -502,7 +521,7 @@ function applyAllSettings(data) {
 
         if (musicEnabled) musicEnabled.checked = musicSettings.enabled;
         if (musicLoop) musicLoop.checked = musicSettings.loop;
-        
+
         if (musicDelay) {
             musicDelay.value = String(musicSettings.delaySec);
             musicDelay.dispatchEvent(new Event('input'));
@@ -559,7 +578,7 @@ function applyAllSettings(data) {
         const fingerPulse = document.getElementById('finger-pulse');
 
         if (fingerEnabled) fingerEnabled.checked = fingerUISettings.enabled;
-        
+
         if (fingerShowDelay) {
             fingerShowDelay.value = String(fingerUISettings.showDelaySec);
             fingerShowDelay.dispatchEvent(new Event('input'));
@@ -1096,6 +1115,23 @@ function init() {
     container.id = 'arona-container';
     document.body.appendChild(container);
 
+    // FPS Overlay UI
+    const fpsOverlayDiv = document.createElement('div');
+    fpsOverlayDiv.id = 'fps-overlay';
+    fpsOverlayDiv.style.position = 'absolute';
+    fpsOverlayDiv.style.top = '10px';
+    fpsOverlayDiv.style.left = '10px';
+    fpsOverlayDiv.style.color = 'rgba(255,255,255,0.7)';
+    fpsOverlayDiv.style.fontFamily = 'monospace, sans-serif';
+    fpsOverlayDiv.style.fontWeight = '100'; // Thin font
+    fpsOverlayDiv.style.fontSize = '14px';
+    fpsOverlayDiv.style.pointerEvents = 'none';
+    fpsOverlayDiv.style.zIndex = '1000';
+    fpsOverlayDiv.style.display = 'none'; // Hidden initially
+    fpsOverlayDiv.style.textShadow = '0px 0px 4px rgba(0,0,0,0.8)';
+    fpsOverlayDiv.innerHTML = '<div style="font-size: 18px; margin-bottom: 2px;">Beta</div><div id="fps-value">0 FPS</div>';
+    container.appendChild(fpsOverlayDiv);
+
     // UI Elements
     const uiContainer = document.getElementById('ui-container');
     const aronaSelector = document.getElementById('arona-anim-selector');
@@ -1173,6 +1209,17 @@ function init() {
             // Reset any keys that might be stuck
             Object.keys(keys).forEach(k => keys[k] = false);
             isRightMouseDown = false;
+        });
+    }
+
+    // FPS Overlay Toggle
+    const fpsOverlayCheckbox = document.getElementById('fps-overlay-enabled');
+    if (fpsOverlayCheckbox) {
+        fpsOverlayCheckbox.checked = fpsOverlaySettings.enabled;
+        fpsOverlayCheckbox.addEventListener('change', () => {
+            fpsOverlaySettings.enabled = !!fpsOverlayCheckbox.checked;
+            const overlay = document.getElementById('fps-overlay');
+            if (overlay) overlay.style.display = (userEnteredScene && fpsOverlaySettings.enabled) ? 'block' : 'none';
         });
     }
 
@@ -1268,7 +1315,7 @@ function init() {
     const fingerBorderOpacity = document.getElementById('finger-border-opacity');
     const fingerGlow = document.getElementById('finger-glow');
     const fingerPulse = document.getElementById('finger-pulse');
-    
+
     const valFingerShowDelay = document.getElementById('val-finger-show-delay');
     const valFingerRippleDelay = document.getElementById('val-finger-ripple-delay');
     const valFingerSize = document.getElementById('val-finger-size');
@@ -1844,7 +1891,7 @@ function init() {
                 if (model) renderHierarchy([model]);
             } else {
                 // Render search results as a flat list
-            if (uiLockedHidden) return;
+                if (uiLockedHidden) return;
                 renderSearchResults(query);
             }
         });
@@ -2190,7 +2237,7 @@ function init() {
         const loaderBarFill = document.getElementById('loader-bar-fill');
         const loaderPercent = document.getElementById('loader-percent');
         const loaderEnterBtn = document.getElementById('loader-enter-btn');
-        
+
         if (loaderBarFill) loaderBarFill.style.width = '100%';
         if (loaderPercent) loaderPercent.textContent = 'Ready!';
         if (loaderEnterBtn) {
@@ -2199,13 +2246,19 @@ function init() {
                 // Prevent this click from propagating to scene event listeners
                 e.stopPropagation();
                 e.preventDefault();
-                
+
                 userEnteredScene = true;
                 const overlay = document.getElementById('loading-overlay');
                 if (overlay) {
                     overlay.classList.add('hidden');
                     // Small delay to ensure overlay transition starts before enabling scene interactions
                     setTimeout(() => {
+                        // explicitly show FPS overlay if enabled
+                        const fpsDiv = document.getElementById('fps-overlay');
+                        if (fpsDiv && fpsOverlaySettings.enabled) {
+                            fpsDiv.style.display = 'block';
+                        }
+
                         // Now safe to start audio/animations
                         if (pendingStartupSettings) {
                             _scheduleAutoplayIfEnabled();
@@ -2509,7 +2562,7 @@ function init() {
                 }
             }
         });
-        
+
         // Debug: warn if finger bone not found
         if (!fingerBone) {
             console.warn('[FingerUI] Fingertip bone not found! Check bone names above.');
@@ -2718,7 +2771,7 @@ function onClick(event) {
     if (loadingOverlay && !loadingOverlay.classList.contains('hidden')) {
         return;
     }
-    
+
     // Don't let UI interactions trigger the 3D scene click behavior.
     if (event.target && event.target.closest && event.target.closest('#hierarchy-ui, #toggle-hierarchy, #ui-container, #physics-ui, #loading-overlay, #finger-ui')) {
         return;
@@ -2733,7 +2786,7 @@ function onTouch(event) {
         if (loadingOverlay && !loadingOverlay.classList.contains('hidden')) {
             return;
         }
-        
+
         const target = event.target;
         if (target && target.closest && target.closest('#hierarchy-ui, #toggle-hierarchy, #ui-container, #physics-ui, #loading-overlay, #finger-ui')) {
             return;
@@ -2746,7 +2799,7 @@ function onTouch(event) {
 function updateFingerUIPosition() {
     const fingerUI = document.getElementById('finger-ui');
     if (!fingerUI) return;
-    
+
     if (!fingerBone || !camera) {
         // If visible but no bone, hide it
         if (fingerUIVisible) {
@@ -2754,25 +2807,25 @@ function updateFingerUIPosition() {
         }
         return;
     }
-    
+
     if (!fingerUIVisible) return;
-    
+
     fingerUI.style.display = '';
-    
+
     // Get world position of the fingertip bone
     fingerBone.getWorldPosition(_fingerVector);
-    
+
     // Project into normalized device coordinates
     _fingerVector.project(camera);
-    
+
     // Get the renderer container dimensions (might be a sub-container like #arona-container)
     const container = renderer.domElement.parentElement || document.body;
     const rect = container.getBoundingClientRect();
-    
+
     // Convert to screen coordinates relative to container
     const x = (_fingerVector.x * 0.5 + 0.5) * rect.width + rect.left;
     const y = (-_fingerVector.y * 0.5 + 0.5) * rect.height + rect.top;
-    
+
     // Update UI element position
     fingerUI.style.left = `${x}px`;
     fingerUI.style.top = `${y}px`;
@@ -2781,9 +2834,9 @@ function updateFingerUIPosition() {
 function _scheduleFingerUIShow() {
     if (fingerUIShowScheduled || !fingerUISettings.enabled) return;
     fingerUIShowScheduled = true;
-    
+
     console.log('[FingerUI] Scheduling show with delay:', fingerUISettings.showDelaySec, 'sec');
-    
+
     const delayMs = Math.max(0, Math.floor((fingerUISettings.showDelaySec || 0) * 1000));
     window.setTimeout(() => {
         fingerUIVisible = true;
@@ -2791,7 +2844,7 @@ function _scheduleFingerUIShow() {
         const fingerUI = document.getElementById('finger-ui');
         if (fingerUI) {
             fingerUI.classList.add('visible');
-            
+
             // Auto-trigger water ripple at finger position
             if (ripplePass && fingerBone && camera) {
                 fingerBone.getWorldPosition(_fingerVector);
@@ -2815,9 +2868,9 @@ let _fingerUITapped = false;
 function _applyLoadingAppearance() {
     const overlay = document.getElementById('loading-overlay');
     if (!overlay) return;
-    
+
     const s = loadingSettings;
-    
+
     // Get or create the background image element
     let bgImg = overlay.querySelector('.loading-bg-image');
     if (!bgImg) {
@@ -2826,7 +2879,7 @@ function _applyLoadingAppearance() {
         bgImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;';
         overlay.insertBefore(bgImg, overlay.firstChild);
     }
-    
+
     // Get or create the overlay tint layer
     let tintLayer = overlay.querySelector('.loading-overlay-tint');
     if (!tintLayer) {
@@ -2835,11 +2888,11 @@ function _applyLoadingAppearance() {
         tintLayer.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;';
         overlay.insertBefore(tintLayer, bgImg.nextSibling);
     }
-    
+
     // Determine background image URL based on page
     const isArtPage = window.location.pathname.includes('/art/');
     const bgPath = isArtPage ? '../../loadingBG/4.kra.webp' : './loadingBG/eono.me.webp';
-    
+
     // Apply background settings
     if (s.bgEnabled) {
         bgImg.style.backgroundImage = `url('${bgPath}')`;
@@ -2852,11 +2905,11 @@ function _applyLoadingAppearance() {
     } else {
         bgImg.style.display = 'none';
     }
-    
+
     // Apply overlay tint
     tintLayer.style.backgroundColor = s.overlayColor;
     tintLayer.style.opacity = s.overlayOpacity;
-    
+
     // Remove default gradient if we have a bg image
     if (s.bgEnabled) {
         overlay.style.background = 'transparent';
@@ -2875,16 +2928,16 @@ window.__eonoLoading = {
 function _updateFingerUIAppearance() {
     const fingerUI = document.getElementById('finger-ui');
     if (!fingerUI) return;
-    
+
     const circle = fingerUI.querySelector('.finger-circle');
     if (!circle) return;
-    
+
     const s = fingerUISettings;
-    
+
     // Update size
     fingerUI.style.width = `${s.size}px`;
     fingerUI.style.height = `${s.size}px`;
-    
+
     // Convert hex color to RGB for gradients
     const hexToRgb = (hex) => {
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -2894,15 +2947,15 @@ function _updateFingerUIAppearance() {
             b: parseInt(result[3], 16)
         } : { r: 233, g: 69, b: 96 };
     };
-    
+
     const rgb = hexToRgb(s.color);
     const colorRgb = `${rgb.r},${rgb.g},${rgb.b}`;
-    
+
     // Update circle appearance
     circle.style.background = `radial-gradient(circle, rgba(${colorRgb},${s.opacity}) 0%, rgba(${colorRgb},${s.opacity * 0.33}) 50%, transparent 70%)`;
     circle.style.border = `2px solid rgba(${colorRgb},${s.borderOpacity})`;
     circle.style.boxShadow = `0 0 20px rgba(${colorRgb},${s.glowIntensity}), inset 0 0 20px rgba(${colorRgb},${s.glowIntensity * 0.33})`;
-    
+
     // Update animation
     const animName = 'finger-pulse-' + Date.now();
     const style = document.createElement('style');
@@ -2962,34 +3015,34 @@ window.__eonoFingerUI = {
 function _initFingerUIClickHandler() {
     const fingerUI = document.getElementById('finger-ui');
     if (!fingerUI) return;
-    
+
     fingerUI.addEventListener('pointerdown', (e) => {
         // Prevent multiple triggers
         if (_fingerUITapped) return;
         _fingerUITapped = true;
-        
+
         e.stopPropagation();
         e.preventDefault();
-        
+
         console.log('[FingerUI] Tapped!');
-        
+
         // Trigger water ripple at finger position if we have the finger bone
         if (fingerBone && camera) {
             fingerBone.getWorldPosition(_fingerVector);
             _fingerVector.project(camera);
-            
+
             const container = renderer.domElement.parentElement || document.body;
             const rect = container.getBoundingClientRect();
             const screenX = (_fingerVector.x * 0.5 + 0.5) * rect.width + rect.left;
             const screenY = (-_fingerVector.y * 0.5 + 0.5) * rect.height + rect.top;
-            
+
             // Trigger ripple at finger position
             checkIntersection(screenX, screenY);
         }
-        
+
         // Hide finger UI immediately after tap
         fingerUI.classList.remove('visible');
-        
+
         // Execute callback after ripple delay
         const rippleDelay = fingerUISettings.rippleDelaySec || 0.6;
         setTimeout(() => {
@@ -3017,6 +3070,18 @@ function animate() {
     const delta = clock.getDelta();
     // Use elapsedTime for consistent time reference
     const time = clock.getElapsedTime();
+
+    // FPS tracking
+    if (!window._fpsData) window._fpsData = { frames: 0, lastTime: performance.now() };
+    window._fpsData.frames++;
+    const now = performance.now();
+    if (now - window._fpsData.lastTime >= 250) {
+        const fps = Math.round((window._fpsData.frames * 1000) / (now - window._fpsData.lastTime));
+        const fpsEl = document.getElementById('fps-value');
+        if (fpsEl) fpsEl.textContent = `${fps} FPS`;
+        window._fpsData.frames = 0;
+        window._fpsData.lastTime = now;
+    }
 
     // Update animations first (physics will be layered on top)
     if (mixer) mixer.update(delta);

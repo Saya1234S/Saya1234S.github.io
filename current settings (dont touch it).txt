@@ -100,5 +100,8 @@
   },
   "cameraControls": {
     "disabled": true
+  },
+  "fpsOverlay": {
+    "enabled": true
   }
 }

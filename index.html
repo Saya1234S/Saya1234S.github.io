@@ -424,9 +424,9 @@
             width: 100%;
             height: 100%;
             border-radius: 50%;
-            background: radial-gradient(circle, rgba(233,69,96,0.3) 0%, rgba(233,69,96,0.1) 50%, transparent 70%);
-            border: 2px solid rgba(233,69,96,0.5);
-            box-shadow: 0 0 20px rgba(233,69,96,0.3), inset 0 0 20px rgba(233,69,96,0.1);
+            background: radial-gradient(circle, rgba(233, 69, 96, 0.3) 0%, rgba(233, 69, 96, 0.1) 50%, transparent 70%);
+            border: 2px solid rgba(233, 69, 96, 0.5);
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.3), inset 0 0 20px rgba(233, 69, 96, 0.1);
             animation: finger-pulse 2s ease-in-out infinite;
         }
 
@@ -438,7 +438,7 @@
             width: 40%;
             height: 40%;
             pointer-events: none;
-            filter: drop-shadow(0 0 10px rgba(233,69,96,0.5));
+            filter: drop-shadow(0 0 10px rgba(233, 69, 96, 0.5));
         }
 
         #finger-ui .finger-icon img {
@@ -470,13 +470,16 @@
         }
 
         @keyframes finger-pulse {
-            0%, 100% {
+
+            0%,
+            100% {
                 transform: scale(1);
-                box-shadow: 0 0 20px rgba(233,69,96,0.3), inset 0 0 20px rgba(233,69,96,0.1);
+                box-shadow: 0 0 20px rgba(233, 69, 96, 0.3), inset 0 0 20px rgba(233, 69, 96, 0.1);
             }
+
             50% {
                 transform: scale(1.1);
-                box-shadow: 0 0 30px rgba(233,69,96,0.5), inset 0 0 25px rgba(233,69,96,0.2);
+                box-shadow: 0 0 30px rgba(233, 69, 96, 0.5), inset 0 0 25px rgba(233, 69, 96, 0.2);
             }
         }
     </style>
@@ -491,64 +494,71 @@
                 <div class="loader-bar-fill" id="loader-bar-fill"></div>
             </div>
             <div class="loader-percent" id="loader-percent">Loading... 0%</div>
-    </div>
-    <button class="loader-enter-btn" id="loader-enter-btn">Enter</button>
-
-    <!-- Loading Settings Panel -->
-    <div id="loading-settings-panel" style="position:absolute; bottom:20px; right:20px; background:rgba(0,0,0,0.8); padding:15px; border-radius:8px; width:250px; color:#fff; font-size:12px; z-index:20; border:1px solid rgba(255,255,255,0.1); backdrop-filter:blur(5px);">
-        <div style="font-weight:bold; color:#00bcd4; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-            LOADING SCREEN SETTINGS
-            <span style="font-size:16px; color:#fff; cursor:pointer; width:20px; text-align:center;" onclick="const c=document.getElementById('loading-settings-content'); c.style.display=c.style.display==='none'?'flex':'none'; this.innerText=c.style.display==='none'?'+':'-';">-</span>
         </div>
-        <div id="loading-settings-content" style="display:flex; flex-direction:column; gap:8px;">
-            <div style="display:flex; gap:8px; align-items:center;">
-                <input id="loading-bg-enabled" type="checkbox" checked style="margin:0;">
-                <label for="loading-bg-enabled" style="margin:0; cursor:pointer;">Show Background</label>
+        <button class="loader-enter-btn" id="loader-enter-btn">Enter</button>
+
+        <!-- Loading Settings Panel -->
+        <div id="loading-settings-panel"
+            style="position:absolute; bottom:20px; right:20px; background:rgba(0,0,0,0.8); padding:15px; border-radius:8px; width:250px; color:#fff; font-size:12px; z-index:20; border:1px solid rgba(255,255,255,0.1); backdrop-filter:blur(5px);">
+            <div
+                style="font-weight:bold; color:#00bcd4; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+                LOADING SCREEN SETTINGS
+                <span style="font-size:16px; color:#fff; cursor:pointer; width:20px; text-align:center;"
+                    onclick="const c=document.getElementById('loading-settings-content'); c.style.display=c.style.display==='none'?'flex':'none'; this.innerText=c.style.display==='none'?'+':'-';">-</span>
             </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-                <label style="width:70px;">BG Opacity:</label>
-                <input type="range" id="loading-bg-opacity" min="0" max="1" step="0.05" value="1.0" style="flex:1;">
-                <span id="val-loading-bg-opacity" style="min-width:35px; text-align:right;">100%</span>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-                <label style="width:70px;">BG Scale:</label>
-                <select id="loading-bg-scale" style="flex:1; background:#222; color:#fff; border:1px solid #444; border-radius:3px; padding:2px;">
-                    <option value="cover" selected>Cover</option>
-                    <option value="contain">Contain</option>
-                    <option value="100% 100%">Stretch</option>
-                    <option value="auto">Auto</option>
-                </select>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-                <label style="width:70px;">BG Position:</label>
-                <select id="loading-bg-position" style="flex:1; background:#222; color:#fff; border:1px solid #444; border-radius:3px; padding:2px;">
-                    <option value="center" selected>Center</option>
-                    <option value="top">Top</option>
-                    <option value="bottom">Bottom</option>
-                    <option value="left">Left</option>
-                    <option value="right">Right</option>
-                </select>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-                <label style="width:70px;">BG Blur:</label>
-                <input type="range" id="loading-bg-blur" min="0" max="20" step="1" value="0" style="flex:1;">
-                <span id="val-loading-bg-blur" style="min-width:35px; text-align:right;">0px</span>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-                <label style="width:70px;">Overlay:</label>
-                <input type="range" id="loading-overlay-opacity" min="0" max="1" step="0.05" value="0.5" style="flex:1;">
-                <span id="val-loading-overlay-opacity" style="min-width:35px; text-align:right;">50%</span>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-                <label style="width:70px;">Tint Color:</label>
-                <input type="color" id="loading-overlay-color" value="#000000"
-                    style="padding:0; border:none; width:30px; height:24px; cursor:pointer; background:none;">
+            <div id="loading-settings-content" style="display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input id="loading-bg-enabled" type="checkbox" checked style="margin:0;">
+                    <label for="loading-bg-enabled" style="margin:0; cursor:pointer;">Show Background</label>
+                </div>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <label style="width:70px;">BG Opacity:</label>
+                    <input type="range" id="loading-bg-opacity" min="0" max="1" step="0.05" value="1.0" style="flex:1;">
+                    <span id="val-loading-bg-opacity" style="min-width:35px; text-align:right;">100%</span>
+                </div>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <label style="width:70px;">BG Scale:</label>
+                    <select id="loading-bg-scale"
+                        style="flex:1; background:#222; color:#fff; border:1px solid #444; border-radius:3px; padding:2px;">
+                        <option value="cover" selected>Cover</option>
+                        <option value="contain">Contain</option>
+                        <option value="100% 100%">Stretch</option>
+                        <option value="auto">Auto</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <label style="width:70px;">BG Position:</label>
+                    <select id="loading-bg-position"
+                        style="flex:1; background:#222; color:#fff; border:1px solid #444; border-radius:3px; padding:2px;">
+                        <option value="center" selected>Center</option>
+                        <option value="top">Top</option>
+                        <option value="bottom">Bottom</option>
+                        <option value="left">Left</option>
+                        <option value="right">Right</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <label style="width:70px;">BG Blur:</label>
+                    <input type="range" id="loading-bg-blur" min="0" max="20" step="1" value="0" style="flex:1;">
+                    <span id="val-loading-bg-blur" style="min-width:35px; text-align:right;">0px</span>
+                </div>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <label style="width:70px;">Overlay:</label>
+                    <input type="range" id="loading-overlay-opacity" min="0" max="1" step="0.05" value="0.5"
+                        style="flex:1;">
+                    <span id="val-loading-overlay-opacity" style="min-width:35px; text-align:right;">50%</span>
+                </div>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <label style="width:70px;">Tint Color:</label>
+                    <input type="color" id="loading-overlay-color" value="#000000"
+                        style="padding:0; border:none; width:30px; height:24px; cursor:pointer; background:none;">
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-    <div id="loading" style="display:none;">Loading...<br><small>(Make sure your model is in the models folder)</small></div>
+    <div id="loading" style="display:none;">Loading...<br><small>(Make sure your model is in the models folder)</small>
+    </div>
 
     <!-- Finger UI - follows Arona's fingertip -->
     <div id="finger-ui">
@@ -709,7 +719,15 @@
                 <label style="color:#00bcd4; font-weight:bold;">Camera Controls:</label>
                 <div style="display:flex; gap:8px; align-items:center; margin-top:5px; font-size:11px;">
                     <input id="camera-controls-disabled" type="checkbox" style="margin:0;">
-                    <label for="camera-controls-disabled" style="margin:0;">Disable right-click look &amp; WASDQE movement</label>
+                    <label for="camera-controls-disabled" style="margin:0;">Disable right-click look &amp; WASDQE
+                        movement</label>
+                </div>
+            </div>
+            <div class="select-group">
+                <label style="color:#00bcd4; font-weight:bold;">Overlay:</label>
+                <div style="display:flex; gap:8px; align-items:center; margin-top:5px; font-size:11px;">
+                    <input id="fps-overlay-enabled" type="checkbox" checked style="margin:0;">
+                    <label for="fps-overlay-enabled" style="margin:0;">Show FPS / Beta</label>
                 </div>
             </div>
             <div class="select-group">
@@ -749,7 +767,8 @@
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Volume:</label>
-                        <input type="range" id="seashore-volume" min="0" max="1" step="0.01" value="0.5" style="flex:1;">
+                        <input type="range" id="seashore-volume" min="0" max="1" step="0.01" value="0.5"
+                            style="flex:1;">
                         <span id="val-seashore-volume" style="min-width:48px;">50%</span>
                     </div>
                 </div>
@@ -763,12 +782,14 @@
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Show Delay:</label>
-                        <input type="range" id="finger-show-delay" min="0" max="10" step="0.1" value="2.0" style="flex:1;">
+                        <input type="range" id="finger-show-delay" min="0" max="10" step="0.1" value="2.0"
+                            style="flex:1;">
                         <span id="val-finger-show-delay" style="min-width:48px;">2.0s</span>
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Ripple Delay:</label>
-                        <input type="range" id="finger-ripple-delay" min="0" max="2" step="0.05" value="0.6" style="flex:1;">
+                        <input type="range" id="finger-ripple-delay" min="0" max="2" step="0.05" value="0.6"
+                            style="flex:1;">
                         <span id="val-finger-ripple-delay" style="min-width:48px;">0.6s</span>
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
@@ -789,7 +810,8 @@
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Border:</label>
-                        <input type="range" id="finger-border-opacity" min="0" max="1" step="0.05" value="0.5" style="flex:1;">
+                        <input type="range" id="finger-border-opacity" min="0" max="1" step="0.05" value="0.5"
+                            style="flex:1;">
                         <span id="val-finger-border-opacity" style="min-width:48px;">50%</span>
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
@@ -799,7 +821,8 @@
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Pulse:</label>
-                        <input type="range" id="finger-pulse" min="1.0" max="2.0" step="0.05" value="1.1" style="flex:1;">
+                        <input type="range" id="finger-pulse" min="1.0" max="2.0" step="0.05" value="1.1"
+                            style="flex:1;">
                         <span id="val-finger-pulse" style="min-width:48px;">1.10x</span>
                     </div>
                 </div>
@@ -828,17 +851,20 @@
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Soft1:</label>
-                        <input type="range" id="toon-softness" min="0" max="0.25" step="0.001" value="0.02" style="flex:1;">
+                        <input type="range" id="toon-softness" min="0" max="0.25" step="0.001" value="0.02"
+                            style="flex:1;">
                         <span id="val-toon-softness" style="min-width:40px;">0.020</span>
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Soft2:</label>
-                        <input type="range" id="toon-softness2" min="0" max="0.25" step="0.001" value="0.02" style="flex:1;">
+                        <input type="range" id="toon-softness2" min="0" max="0.25" step="0.001" value="0.02"
+                            style="flex:1;">
                         <span id="val-toon-softness2" style="min-width:40px;">0.020</span>
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Soft3:</label>
-                        <input type="range" id="toon-softness3" min="0" max="0.25" step="0.001" value="0.02" style="flex:1;">
+                        <input type="range" id="toon-softness3" min="0" max="0.25" step="0.001" value="0.02"
+                            style="flex:1;">
                         <span id="val-toon-softness3" style="min-width:40px;">0.020</span>
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
@@ -858,7 +884,8 @@
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Hi:</label>
-                        <input type="range" id="toon-highlight" min="1" max="2" step="0.01" value="1.15" style="flex:1;">
+                        <input type="range" id="toon-highlight" min="1" max="2" step="0.01" value="1.15"
+                            style="flex:1;">
                         <span id="val-toon-highlight" style="min-width:40px;">1.15</span>
                     </div>
                 </div>
@@ -895,7 +922,8 @@
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:50px;">World:</label>
-                        <input type="range" id="beach-rotation" min="-180" max="180" step="0.1" value="0" style="flex:1;">
+                        <input type="range" id="beach-rotation" min="-180" max="180" step="0.1" value="0"
+                            style="flex:1;">
                         <span id="val-beach-rotation" style="min-width:40px;">0.0</span>
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
@@ -927,7 +955,8 @@
                     </div>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Elev:</label>
-                        <input type="range" id="cloud-elevation" min="0" max="1" step="0.01" value="0.5" style="flex:1;">
+                        <input type="range" id="cloud-elevation" min="0" max="1" step="0.01" value="0.5"
+                            style="flex:1;">
                         <span id="val-cloud-elevation" style="min-width:40px;">0.50</span>
                     </div>
                     <button id="btn-toggle-ocean" style="background: #2b6777; margin-top: 5px;">Toggle Ocean:

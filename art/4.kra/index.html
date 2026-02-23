@@ -199,9 +199,9 @@
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(233,69,96,0.3) 0%, rgba(233,69,96,0.1) 50%, transparent 70%);
-      border: 2px solid rgba(233,69,96,0.5);
-      box-shadow: 0 0 20px rgba(233,69,96,0.3), inset 0 0 20px rgba(233,69,96,0.1);
+      background: radial-gradient(circle, rgba(233, 69, 96, 0.3) 0%, rgba(233, 69, 96, 0.1) 50%, transparent 70%);
+      border: 2px solid rgba(233, 69, 96, 0.5);
+      box-shadow: 0 0 20px rgba(233, 69, 96, 0.3), inset 0 0 20px rgba(233, 69, 96, 0.1);
       animation: finger-pulse 2s ease-in-out infinite;
     }
 
@@ -213,7 +213,7 @@
       width: 40%;
       height: 40%;
       pointer-events: none;
-      filter: drop-shadow(0 0 10px rgba(233,69,96,0.5));
+      filter: drop-shadow(0 0 10px rgba(233, 69, 96, 0.5));
     }
 
     #finger-ui .finger-icon img {
@@ -245,13 +245,16 @@
     }
 
     @keyframes finger-pulse {
-      0%, 100% {
+
+      0%,
+      100% {
         transform: scale(1);
-        box-shadow: 0 0 20px rgba(233,69,96,0.3), inset 0 0 20px rgba(233,69,96,0.1);
+        box-shadow: 0 0 20px rgba(233, 69, 96, 0.3), inset 0 0 20px rgba(233, 69, 96, 0.1);
       }
+
       50% {
         transform: scale(1.1);
-        box-shadow: 0 0 30px rgba(233,69,96,0.5), inset 0 0 25px rgba(233,69,96,0.2);
+        box-shadow: 0 0 30px rgba(233, 69, 96, 0.5), inset 0 0 25px rgba(233, 69, 96, 0.2);
       }
     }
   </style>
@@ -268,58 +271,63 @@
       <div class="loader-percent" id="loader-percent">Loading... 0%</div>
     </div>
     <button class="loader-enter-btn" id="loader-enter-btn">Enter</button>
-    
+
     <!-- Loading Settings Panel -->
-    <div id="loading-settings-panel" style="position:absolute; bottom:20px; right:20px; background:rgba(0,0,0,0.8); padding:15px; border-radius:8px; width:250px; color:#fff; font-size:12px; z-index:20; border:1px solid rgba(255,255,255,0.1); backdrop-filter:blur(5px);">
-        <div style="font-weight:bold; color:#00bcd4; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-            LOADING SCREEN SETTINGS
-            <span style="font-size:16px; color:#fff; cursor:pointer; width:20px; text-align:center;" onclick="const c=document.getElementById('loading-settings-content'); c.style.display=c.style.display==='none'?'flex':'none'; this.innerText=c.style.display==='none'?'+':'-';">-</span>
+    <div id="loading-settings-panel"
+      style="position:absolute; bottom:20px; right:20px; background:rgba(0,0,0,0.8); padding:15px; border-radius:8px; width:250px; color:#fff; font-size:12px; z-index:20; border:1px solid rgba(255,255,255,0.1); backdrop-filter:blur(5px);">
+      <div
+        style="font-weight:bold; color:#00bcd4; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+        LOADING SCREEN SETTINGS
+        <span style="font-size:16px; color:#fff; cursor:pointer; width:20px; text-align:center;"
+          onclick="const c=document.getElementById('loading-settings-content'); c.style.display=c.style.display==='none'?'flex':'none'; this.innerText=c.style.display==='none'?'+':'-';">-</span>
+      </div>
+      <div id="loading-settings-content" style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input id="loading-bg-enabled" type="checkbox" checked style="margin:0; cursor:pointer;">
+          <label for="loading-bg-enabled" style="margin:0; cursor:pointer;">Show Background</label>
         </div>
-        <div id="loading-settings-content" style="display:flex; flex-direction:column; gap:8px;">
-            <div style="display:flex; gap:8px; align-items:center;">
-                <input id="loading-bg-enabled" type="checkbox" checked style="margin:0; cursor:pointer;">
-                <label for="loading-bg-enabled" style="margin:0; cursor:pointer;">Show Background</label>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-                <label style="width:70px;">BG Opacity:</label>
-                <input type="range" id="loading-bg-opacity" min="0" max="1" step="0.05" value="1.0" style="flex:1;">
-                <span id="val-loading-bg-opacity" style="min-width:35px; text-align:right;">100%</span>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-                <label style="width:70px;">BG Scale:</label>
-                <select id="loading-bg-scale" style="flex:1; background:#222; color:#fff; border:1px solid #444; border-radius:3px; padding:2px;">
-                    <option value="cover" selected>Cover</option>
-                    <option value="contain">Contain</option>
-                    <option value="100% 100%">Stretch</option>
-                    <option value="auto">Auto</option>
-                </select>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-                <label style="width:70px;">BG Position:</label>
-                <select id="loading-bg-position" style="flex:1; background:#222; color:#fff; border:1px solid #444; border-radius:3px; padding:2px;">
-                    <option value="center" selected>Center</option>
-                    <option value="top">Top</option>
-                    <option value="bottom">Bottom</option>
-                    <option value="left">Left</option>
-                    <option value="right">Right</option>
-                </select>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-                <label style="width:70px;">BG Blur:</label>
-                <input type="range" id="loading-bg-blur" min="0" max="20" step="1" value="0" style="flex:1;">
-                <span id="val-loading-bg-blur" style="min-width:35px; text-align:right;">0px</span>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-                <label style="width:70px;">Overlay:</label>
-                <input type="range" id="loading-overlay-opacity" min="0" max="1" step="0.05" value="0.5" style="flex:1;">
-                <span id="val-loading-overlay-opacity" style="min-width:35px; text-align:right;">50%</span>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-                <label style="width:70px;">Tint Color:</label>
-                <input type="color" id="loading-overlay-color" value="#000000"
-                    style="padding:0; border:none; width:30px; height:24px; cursor:pointer; background:none;">
-            </div>
+        <div style="display:flex; gap:5px; align-items:center;">
+          <label style="width:70px;">BG Opacity:</label>
+          <input type="range" id="loading-bg-opacity" min="0" max="1" step="0.05" value="1.0" style="flex:1;">
+          <span id="val-loading-bg-opacity" style="min-width:35px; text-align:right;">100%</span>
         </div>
+        <div style="display:flex; gap:5px; align-items:center;">
+          <label style="width:70px;">BG Scale:</label>
+          <select id="loading-bg-scale"
+            style="flex:1; background:#222; color:#fff; border:1px solid #444; border-radius:3px; padding:2px;">
+            <option value="cover" selected>Cover</option>
+            <option value="contain">Contain</option>
+            <option value="100% 100%">Stretch</option>
+            <option value="auto">Auto</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:5px; align-items:center;">
+          <label style="width:70px;">BG Position:</label>
+          <select id="loading-bg-position"
+            style="flex:1; background:#222; color:#fff; border:1px solid #444; border-radius:3px; padding:2px;">
+            <option value="center" selected>Center</option>
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+        <div style="display:flex; gap:5px; align-items:center;">
+          <label style="width:70px;">BG Blur:</label>
+          <input type="range" id="loading-bg-blur" min="0" max="20" step="1" value="0" style="flex:1;">
+          <span id="val-loading-bg-blur" style="min-width:35px; text-align:right;">0px</span>
+        </div>
+        <div style="display:flex; gap:5px; align-items:center;">
+          <label style="width:70px;">Overlay:</label>
+          <input type="range" id="loading-overlay-opacity" min="0" max="1" step="0.05" value="0.5" style="flex:1;">
+          <span id="val-loading-overlay-opacity" style="min-width:35px; text-align:right;">50%</span>
+        </div>
+        <div style="display:flex; gap:5px; align-items:center;">
+          <label style="width:70px;">Tint Color:</label>
+          <input type="color" id="loading-overlay-color" value="#000000"
+            style="padding:0; border:none; width:30px; height:24px; cursor:pointer; background:none;">
+        </div>
+      </div>
     </div>
   </div>
 
@@ -359,8 +367,8 @@
     <div
       style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 5px;">
       <h3>Hair Physics</h3>
-      <button id="btn-toggle-physics-panel"
-        style="margin: 0; padding: 2px 5px; font-size: 10px; background: #444;">Hide Physics</button>
+      <button id="btn-toggle-physics-panel" style="margin: 0; padding: 2px 5px; font-size: 10px; background: #444;">Hide
+        Physics</button>
     </div>
     <div id="physics-content">
       <div style="margin-bottom: 8px;">
@@ -467,6 +475,13 @@
         <div style="display:flex; gap:8px; align-items:center; margin-top:5px; font-size:11px;">
           <input id="camera-controls-disabled" type="checkbox" style="margin:0;">
           <label for="camera-controls-disabled" style="margin:0;">Disable right-click look & WASDQE movement</label>
+        </div>
+      </div>
+      <div class="select-group">
+        <label style="color:#00bcd4; font-weight:bold;">Overlay:</label>
+        <div style="display:flex; gap:8px; align-items:center; margin-top:5px; font-size:11px;">
+          <input id="fps-overlay-enabled" type="checkbox" checked style="margin:0;">
+          <label for="fps-overlay-enabled" style="margin:0;">Show FPS / Beta</label>
         </div>
       </div>
       <div class="select-group">
@@ -673,7 +688,7 @@
       if (fadeOverlay) {
         fadeOverlay.classList.remove('fade-out');
         fadeOverlay.classList.add('fade-in');
-        
+
         // Wait for fade to complete, then reveal
         setTimeout(() => {
           // Stop rendering / interactions on the heavy intro scene
@@ -693,7 +708,7 @@
             const p = video.play();
             if (p && typeof p.catch === 'function') p.catch(() => { });
           }
-          
+
           // Fade from black again
           setTimeout(() => {
             fadeOverlay.classList.remove('fade-in');
