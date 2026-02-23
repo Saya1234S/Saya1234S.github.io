@@ -87,6 +87,17 @@
     "volume": 0.5,
     "loop": true
   },
+  "fingerUI": {
+    "enabled": true,
+    "showDelaySec": 6.4,
+    "rippleDelaySec": 1.4,
+    "size": 80,
+    "color": "#ffffff",
+    "opacity": 0.5,
+    "borderOpacity": 0.5,
+    "glowIntensity": 0.55,
+    "pulseScale": 1.7
+  },
   "cameraControls": {
     "disabled": true
   }

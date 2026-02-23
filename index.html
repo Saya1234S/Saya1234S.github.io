@@ -45,6 +45,17 @@
             transition: opacity 0.5s ease, visibility 0.5s ease;
         }
 
+        #loading-overlay .loading-bg-image,
+        #loading-overlay .loading-overlay-tint {
+            pointer-events: none;
+        }
+
+        #loading-overlay .loader-title,
+        #loading-overlay .loader-container {
+            position: relative;
+            z-index: 10;
+        }
+
         #loading-overlay.hidden {
             opacity: 0;
             visibility: hidden;
@@ -390,6 +401,84 @@
             border-color: #fff;
             box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
         }
+
+        /* Finger UI - translucent circle that follows fingertip */
+        #finger-ui {
+            position: fixed;
+            width: 80px;
+            height: 80px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            z-index: 100;
+        }
+
+        #finger-ui.visible {
+            opacity: 1;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        #finger-ui .finger-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(233,69,96,0.3) 0%, rgba(233,69,96,0.1) 50%, transparent 70%);
+            border: 2px solid rgba(233,69,96,0.5);
+            box-shadow: 0 0 20px rgba(233,69,96,0.3), inset 0 0 20px rgba(233,69,96,0.1);
+            animation: finger-pulse 2s ease-in-out infinite;
+        }
+
+        #finger-ui .finger-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40%;
+            height: 40%;
+            pointer-events: none;
+            filter: drop-shadow(0 0 10px rgba(233,69,96,0.5));
+        }
+
+        #finger-ui .finger-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Fade to black overlay for page transitions */
+        #page-fade-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10000;
+            transition: opacity 0.6s ease-in-out;
+        }
+
+        #page-fade-overlay.fade-in {
+            opacity: 1;
+        }
+
+        #page-fade-overlay.fade-out {
+            opacity: 0;
+        }
+
+        @keyframes finger-pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(233,69,96,0.3), inset 0 0 20px rgba(233,69,96,0.1);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 30px rgba(233,69,96,0.5), inset 0 0 25px rgba(233,69,96,0.2);
+            }
+        }
     </style>
 </head>
 
@@ -402,11 +491,73 @@
                 <div class="loader-bar-fill" id="loader-bar-fill"></div>
             </div>
             <div class="loader-percent" id="loader-percent">Loading... 0%</div>
+    </div>
+    <button class="loader-enter-btn" id="loader-enter-btn">Enter</button>
+
+    <!-- Loading Settings Panel -->
+    <div id="loading-settings-panel" style="position:absolute; bottom:20px; right:20px; background:rgba(0,0,0,0.8); padding:15px; border-radius:8px; width:250px; color:#fff; font-size:12px; z-index:20; border:1px solid rgba(255,255,255,0.1); backdrop-filter:blur(5px);">
+        <div style="font-weight:bold; color:#00bcd4; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+            LOADING SCREEN SETTINGS
+            <span style="font-size:16px; color:#fff; cursor:pointer; width:20px; text-align:center;" onclick="const c=document.getElementById('loading-settings-content'); c.style.display=c.style.display==='none'?'flex':'none'; this.innerText=c.style.display==='none'?'+':'-';">-</span>
         </div>
-        <button class="loader-enter-btn" id="loader-enter-btn">Enter</button>
+        <div id="loading-settings-content" style="display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; gap:8px; align-items:center;">
+                <input id="loading-bg-enabled" type="checkbox" checked style="margin:0;">
+                <label for="loading-bg-enabled" style="margin:0; cursor:pointer;">Show Background</label>
+            </div>
+            <div style="display:flex; gap:5px; align-items:center;">
+                <label style="width:70px;">BG Opacity:</label>
+                <input type="range" id="loading-bg-opacity" min="0" max="1" step="0.05" value="1.0" style="flex:1;">
+                <span id="val-loading-bg-opacity" style="min-width:35px; text-align:right;">100%</span>
+            </div>
+            <div style="display:flex; gap:5px; align-items:center;">
+                <label style="width:70px;">BG Scale:</label>
+                <select id="loading-bg-scale" style="flex:1; background:#222; color:#fff; border:1px solid #444; border-radius:3px; padding:2px;">
+                    <option value="cover" selected>Cover</option>
+                    <option value="contain">Contain</option>
+                    <option value="100% 100%">Stretch</option>
+                    <option value="auto">Auto</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:5px; align-items:center;">
+                <label style="width:70px;">BG Position:</label>
+                <select id="loading-bg-position" style="flex:1; background:#222; color:#fff; border:1px solid #444; border-radius:3px; padding:2px;">
+                    <option value="center" selected>Center</option>
+                    <option value="top">Top</option>
+                    <option value="bottom">Bottom</option>
+                    <option value="left">Left</option>
+                    <option value="right">Right</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:5px; align-items:center;">
+                <label style="width:70px;">BG Blur:</label>
+                <input type="range" id="loading-bg-blur" min="0" max="20" step="1" value="0" style="flex:1;">
+                <span id="val-loading-bg-blur" style="min-width:35px; text-align:right;">0px</span>
+            </div>
+            <div style="display:flex; gap:5px; align-items:center;">
+                <label style="width:70px;">Overlay:</label>
+                <input type="range" id="loading-overlay-opacity" min="0" max="1" step="0.05" value="0.5" style="flex:1;">
+                <span id="val-loading-overlay-opacity" style="min-width:35px; text-align:right;">50%</span>
+            </div>
+            <div style="display:flex; gap:5px; align-items:center;">
+                <label style="width:70px;">Tint Color:</label>
+                <input type="color" id="loading-overlay-color" value="#000000"
+                    style="padding:0; border:none; width:30px; height:24px; cursor:pointer; background:none;">
+            </div>
+        </div>
+    </div>
+</div>
+
+    <div id="loading" style="display:none;">Loading...<br><small>(Make sure your model is in the models folder)</small></div>
+
+    <!-- Finger UI - follows Arona's fingertip -->
+    <div id="finger-ui">
+        <div class="finger-circle"></div>
+        <div class="finger-icon"><img src="./icons/finger.png" alt="Tap here"></div>
     </div>
 
-    <div id="loading" style="display:none;">Loading Arona...<br><small>(Make sure your model is in the models folder)</small></div>
+    <!-- Page fade overlay for transitions -->
+    <div id="page-fade-overlay"></div>
 
     <button id="toggle-hierarchy">Show Hierarchy</button>
     <div id="hierarchy-ui">
@@ -603,6 +754,56 @@
                     </div>
                 </div>
             </div>
+            <div class="select-group">
+                <label style="color:#00bcd4; font-weight:bold;">Finger UI (👆):</label>
+                <div style="display:flex; flex-direction:column; gap:6px; margin-top:5px; font-size:11px;">
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input id="finger-enabled" type="checkbox" checked style="margin:0;">
+                        <label for="finger-enabled" style="margin:0;">Enabled</label>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Show Delay:</label>
+                        <input type="range" id="finger-show-delay" min="0" max="10" step="0.1" value="2.0" style="flex:1;">
+                        <span id="val-finger-show-delay" style="min-width:48px;">2.0s</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Ripple Delay:</label>
+                        <input type="range" id="finger-ripple-delay" min="0" max="2" step="0.05" value="0.6" style="flex:1;">
+                        <span id="val-finger-ripple-delay" style="min-width:48px;">0.6s</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Size:</label>
+                        <input type="range" id="finger-size" min="40" max="200" step="5" value="80" style="flex:1;">
+                        <span id="val-finger-size" style="min-width:48px;">80px</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Color:</label>
+                        <input type="color" id="finger-color" value="#e94560"
+                            style="padding:0; border:none; width:30px; height:24px; cursor:pointer; background:none;">
+                        <span id="val-finger-color" style="min-width:48px;">#e94560</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Opacity:</label>
+                        <input type="range" id="finger-opacity" min="0" max="1" step="0.05" value="0.3" style="flex:1;">
+                        <span id="val-finger-opacity" style="min-width:48px;">30%</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Border:</label>
+                        <input type="range" id="finger-border-opacity" min="0" max="1" step="0.05" value="0.5" style="flex:1;">
+                        <span id="val-finger-border-opacity" style="min-width:48px;">50%</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Glow:</label>
+                        <input type="range" id="finger-glow" min="0" max="1" step="0.05" value="0.3" style="flex:1;">
+                        <span id="val-finger-glow" style="min-width:48px;">30%</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Pulse:</label>
+                        <input type="range" id="finger-pulse" min="1.0" max="2.0" step="0.05" value="1.1" style="flex:1;">
+                        <span id="val-finger-pulse" style="min-width:48px;">1.10x</span>
+                    </div>
+                </div>
+            </div>
             <button id="play-btn">Play Selected</button>
             <button id="btn-toggle-shader" style="background: #444;">Toon Shader: ON</button>
             <button id="btn-toggle-light" style="background: #444;">Toggle Lights</button>
@@ -760,6 +961,23 @@
 
     <!-- GSAP for smooth animations -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <!-- Finger UI Configuration -->
+    <script>
+        // Configure finger UI destination (delays are loaded from settings file)
+        document.addEventListener('DOMContentLoaded', () => {
+            // Wait for main.js to initialize __eonoFingerUI
+            const configureFingerUI = () => {
+                if (window.__eonoFingerUI) {
+                    // Only set destination, delays come from settings file
+                    window.__eonoFingerUI.setDestination('./home.html');
+                } else {
+                    setTimeout(configureFingerUI, 100);
+                }
+            };
+            configureFingerUI();
+        });
+    </script>
 
     <!-- Main Application -->
     <script type="module" src="./main.js"></script>
