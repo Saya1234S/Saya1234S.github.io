@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Three.js Water Examples</title>
+	<style>
+		body { font-family: Arial, sans-serif; background: #0a1628; color: #e0e0e0; margin: 0; padding: 40px; }
+		h1 { color: #4fc3f7; text-align: center; margin-bottom: 40px; }
+		.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; max-width: 1200px; margin: 0 auto; }
+		a { text-decoration: none; color: inherit; }
+		.card { background: #132038; border: 1px solid #1e3a5f; border-radius: 12px; padding: 24px; transition: transform 0.2s, box-shadow 0.2s; }
+		.card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(79,195,247,0.2); border-color: #4fc3f7; }
+		.card h2 { color: #4fc3f7; margin: 0 0 8px 0; font-size: 18px; }
+		.card .tag { display: inline-block; background: #1e3a5f; color: #90caf9; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 12px; }
+		.card p { margin: 0; font-size: 14px; line-height: 1.5; color: #b0bec5; }
+	</style>
+</head>
+<body>
+	<h1>🌊 Three.js Water / Ocean / Sea Examples</h1>
+	<div class="grid">
+		<a href="examples/webgl_gpgpu_water.html">
+			<div class="card">
+				<h2>GPGPU Water</h2>
+				<span class="tag">WebGL</span>
+				<p>GPU-computed water simulation with interactive mouse ripples and floating rubber ducks.</p>
+			</div>
+		</a>
+		<a href="examples/webgpu_compute_water.html">
+			<div class="card">
+				<h2>Compute Water</h2>
+				<span class="tag">WebGPU</span>
+				<p>WebGPU compute shader water simulation with 100 instanced ducks driven by TSL.</p>
+			</div>
+		</a>
+		<a href="examples/webgpu_water.html">
+			<div class="card">
+				<h2>Water (Night Pool)</h2>
+				<span class="tag">WebGPU</span>
+				<p>Flowing water with normal maps, bloom, and FXAA in a night pool scene.</p>
+			</div>
+		</a>
+		<a href="examples/webgpu_backdrop_water.html">
+			<div class="card">
+				<h2>Backdrop Water</h2>
+				<span class="tag">WebGPU</span>
+				<p>Water refraction with depth effect, animated character, and underwater blur.</p>
+			</div>
+		</a>
+		<a href="examples/webgl_shaders_ocean.html">
+			<div class="card">
+				<h2>Shaders Ocean</h2>
+				<span class="tag">WebGL</span>
+				<p>Classic ocean shader with sky, sun, clouds, and bloom post-processing.</p>
+			</div>
+		</a>
+		<a href="examples/webgpu_ocean.html">
+			<div class="card">
+				<h2>Ocean</h2>
+				<span class="tag">WebGPU</span>
+				<p>WebGPU ocean with node-based water and sky materials, bloom effects.</p>
+			</div>
+		</a>
+		<a href="examples/webgpu_tsl_raging_sea.html">
+			<div class="card">
+				<h2>Raging Sea</h2>
+				<span class="tag">WebGPU</span>
+				<p>Procedural raging sea with TSL noise-based waves and emissive highlights.</p>
+			</div>
+		</a>
+	</div>
+</body>
+</html>
