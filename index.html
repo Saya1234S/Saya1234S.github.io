@@ -1,44 +1,602 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Eono Games – Hello</title>
-  
-  <!-- SEO Meta -->
-  <meta name="description" content="Welcome to Eono Games. Hello, how are you? Check out our web-based games and updates.">
-  <meta name="keywords" content="eono, eono games, indie game, html game, unity webgl, browser games">
-  <meta name="author" content="Eono Games">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>purana</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            transition: opacity 1s ease;
+        }
 
-  <!-- Open Graph for Social -->
-  <meta property="og:title" content="Eono Games – Hello">
-  <meta property="og:description" content="Visit Eono Games and play indie web-based games online.">
-  <meta property="og:url" content="https://eono.me/">
-  <meta property="og:type" content="website">
-  <meta property="og:image" content="https://eono.me/logo.png"> <!-- optional image -->
+        canvas {
+            display: block;
+        }
 
-  <!-- Robots -->
-  <meta name="robots" content="index, follow">
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: sans-serif;
+            pointer-events: none;
+            text-align: center;
+        }
 
-  <!-- Optional: link to sitemap -->
-  <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml">
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            border: 1px solid #e94560;
+            border-radius: 8px;
+            font-family: sans-serif;
+            display: none;
+            /* Hidden until model loads */
+        }
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      background-color: #f2f2f2;
-    }
-    h1 {
-      color: #333;
-    }
-  </style>
+        #ui-content {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        #hierarchy-ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 300px;
+            height: 100vh;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            z-index: 1000;
+            padding: 10px;
+            display: block;
+            font-family: monospace;
+            font-size: 12px;
+            border-right: 1px solid #e94560;
+            min-width: 200px;
+            max-width: 80vw;
+        }
+
+        #hierarchy-resizer {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 10px;
+            height: 100%;
+            cursor: col-resize;
+            z-index: 1001;
+            background: transparent;
+        }
+
+        #hierarchy-resizer:hover {
+            background: rgba(233, 69, 96, 0.3);
+        }
+
+        #hierarchy-ui .node {
+            margin-left: 10px;
+            padding: 2px 0;
+        }
+
+        #hierarchy-ui .selected-start {
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        #hierarchy-ui .selected-end {
+            color: #2196f3;
+            font-weight: bold;
+        }
+
+        #hierarchy-ui button.xs-btn {
+            font-size: 10px;
+            padding: 2px 4px;
+            margin-left: 5px;
+            background: #444;
+            border: 1px solid #666;
+        }
+
+        #hierarchy-ui button.xs-btn:hover {
+            background: #666;
+        }
+
+        #toggle-hierarchy {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 999;
+            padding: 8px 12px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            display: none;
+        }
+
+        #physics-ui {
+            position: fixed;
+            left: 20px;
+            bottom: 20px;
+            z-index: 1000;
+            width: 320px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            border: 1px solid #e94560;
+            border-radius: 8px;
+            font-family: sans-serif;
+            font-size: 12px;
+        }
+
+        #physics-ui h3 {
+            margin: 0;
+            font-size: 13px;
+        }
+
+        #physics-content {
+            margin-top: 8px;
+        }
+
+        .phys-row {
+            display: grid;
+            grid-template-columns: 110px 1fr 52px;
+            gap: 6px;
+            align-items: center;
+            margin: 6px 0;
+        }
+
+        .phys-row input[type="range"] {
+            width: 100%;
+        }
+
+        .phys-val {
+            text-align: right;
+            color: #ccc;
+            font-family: monospace;
+        }
+
+        .phys-hint {
+            margin-top: 8px;
+            color: #aaa;
+            font-size: 11px;
+        }
+
+        #chains-list {
+            max-height: 100px;
+            overflow-y: auto;
+            border: 1px solid #444;
+            background: #222;
+            margin-bottom: 8px;
+            padding: 4px;
+        }
+
+        .chain-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #333;
+            margin-bottom: 4px;
+            padding: 4px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        .chain-item:hover {
+            background: #444;
+        }
+
+        .chain-item button {
+            padding: 2px 5px;
+            margin: 0;
+            font-size: 10px;
+            background: #c62828;
+            height: auto;
+            margin-left: 5px;
+        }
+
+        .chain-item .chain-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 180px;
+        }
+
+        .select-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        select,
+        button {
+            padding: 5px;
+            background: #222;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #e94560;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            padding: 8px;
+            margin-top: 5px;
+        }
+
+        button:hover {
+            background: #ff5773;
+        }
+
+        button.active {
+            background: #00adb5;
+            box-shadow: 0 0 10px #00adb5;
+        }
+
+        .debug-group {
+            border-top: 1px solid #444;
+            padding-top: 10px;
+            margin-top: 5px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .debug-label {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-bottom: 2px;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 5px;
+        }
+
+        .button-row button {
+            flex: 1;
+            font-size: 0.7rem;
+            padding: 5px;
+        }
+
+        .swatch-row {
+            display: flex;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .bg-swatch {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 2px solid #666;
+            cursor: pointer;
+            padding: 0;
+            margin: 0;
+        }
+
+        .bg-swatch.active {
+            border-color: #fff;
+            box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
+        }
+    </style>
 </head>
+
 <body>
-  <h1>Hello, how are you?</h1>
+    <div id="loading">Loading Arona...<br><small>(Make sure your model is in the models folder)</small></div>
+
+    <button id="toggle-hierarchy">Show Hierarchy</button>
+    <div id="hierarchy-ui">
+        <div id="hierarchy-resizer"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3 style="margin: 0;">Bone Hierarchy</h3>
+            <button id="close-hierarchy"
+                style="background:none; border:none; color:white; font-size: 16px; cursor:pointer;">X</button>
+        </div>
+
+        <div id="hierarchy-search-container">
+            <input type="text" id="hierarchy-search" placeholder="Search bones... (e.g. Hair)">
+        </div>
+
+        <div style="padding: 5px; background: #222; border: 1px solid #444; margin-bottom: 10px;">
+            <div>Start: <span id="lbl-start">None</span></div>
+            <div>End: <span id="lbl-end">None</span></div>
+            <button id="btn-create-phys"
+                style="width: 100%; margin-top: 5px; padding: 5px; background: #28a745; border:none; color:white; cursor:pointer;">Apply
+                Physics</button>
+            <div id="phys-msg" style="color: #ffc107; font-size: 10px; margin-top: 5px;"></div>
+        </div>
+        <div id="hierarchy-content"></div>
+    </div>
+
+    <div id="physics-ui">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 5px;">
+            <h3>Hair Physics</h3>
+            <button id="btn-toggle-physics-panel"
+                style="margin: 0; padding: 2px 5px; font-size: 10px; background: #444;">Hide Physics</button>
+        </div>
+
+        <div id="physics-content">
+            <div style="margin-bottom: 8px;">
+                <div style="font-size: 11px; color: #ccc; margin-bottom: 4px;">Active Chains:</div>
+                <div id="chains-list">
+                    <div style="color: #666; font-style: italic; padding: 4px;">No chains added yet.</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 5px; margin-bottom: 15px; border-top: 1px solid #444; padding-top: 10px;">
+                <button id="btn-copy-settings" style="flex: 1; background: #2196f3;">Copy All Settings</button>
+                <button id="btn-paste-settings" style="flex: 1; background: #ff9800;">Paste Settings</button>
+            </div>
+
+            <div class="phys-row">
+                <label for="phys-wind-yaw">Wind Yaw</label>
+                <input id="phys-wind-yaw" type="range" min="0" max="360" step="1" value="210">
+                <div class="phys-val" id="val-wind-yaw">210°</div>
+            </div>
+
+            <div class="phys-row">
+                <label for="phys-wind-pitch">Wind Pitch</label>
+                <input id="phys-wind-pitch" type="range" min="-90" max="90" step="1" value="0">
+                <div class="phys-val" id="val-wind-pitch">0°</div>
+            </div>
+
+            <div class="phys-row">
+                <label for="phys-wind">Wind Strength</label>
+                <input id="phys-wind" type="range" min="0" max="10" step="0.1" value="1.5">
+                <div class="phys-val" id="val-wind">1.5</div>
+            </div>
+
+            <div class="phys-row">
+                <label for="phys-gust">Gust</label>
+                <input id="phys-gust" type="range" min="0" max="2" step="0.01" value="0.3">
+                <div class="phys-val" id="val-gust">0.30</div>
+            </div>
+
+            <div class="phys-row">
+                <label for="phys-turb">Turbulence</label>
+                <input id="phys-turb" type="range" min="0" max="5" step="0.05" value="2.0">
+                <div class="phys-val" id="val-turb">2.00</div>
+            </div>
+
+            <div class="phys-row">
+                <label for="phys-wind-noise">Strand Phase</label>
+                <input id="phys-wind-noise" type="range" min="0" max="10" step="0.1" value="1.5">
+                <div class="phys-val" id="val-wind-noise">1.5</div>
+            </div>
+
+            <div class="phys-row">
+                <label for="phys-wind-spread">Strand Spread</label>
+                <input id="phys-wind-spread" type="range" min="0" max="1" step="0.01" value="0.2">
+                <div class="phys-val" id="val-wind-spread">0.20</div>
+            </div>
+
+            <div class="phys-row">
+                <label for="phys-gravity">Gravity</label>
+                <input id="phys-gravity" type="range" min="0" max="30" step="0.1" value="9">
+                <div class="phys-val" id="val-gravity">9.0</div>
+            </div>
+
+            <div class="phys-row">
+                <label for="phys-damping">Damping</label>
+                <input id="phys-damping" type="range" min="0" max="0.2" step="0.001" value="0.03">
+                <div class="phys-val" id="val-damping">0.030</div>
+            </div>
+
+            <div class="phys-row">
+                <label for="phys-iter">Hardness</label>
+                <input id="phys-iter" type="range" min="1" max="30" step="1" value="12">
+                <div class="phys-val" id="val-iter">12</div>
+            </div>
+
+            <div class="phys-row">
+                <label for="phys-bend">Bend Allowed</label>
+                <input id="phys-bend" type="range" min="0" max="1" step="0.01" value="0.75">
+                <div class="phys-val" id="val-bend">0.75</div>
+            </div>
+
+            <div class="phys-hint">Tip: pick Start bone near scalp, End at strand tip.</div>
+        </div>
+    </div>
+
+    <div id="ui-container">
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 5px;">
+            <h3 style="margin:0; font-size:14px; text-transform: uppercase; letter-spacing: 1px;">Animations</h3>
+            <button id="btn-toggle-main-panel"
+                style="margin: 0; padding: 2px 5px; font-size: 10px; background: #444;">Hide</button>
+        </div>
+
+        <div id="ui-content">
+            <div class="select-group">
+                <label for="arona-anim-selector">Arona Animation:</label>
+                <select id="arona-anim-selector"></select>
+            </div>
+            <div class="select-group">
+                <label for="camera-anim-selector">Camera Animation:</label>
+                <select id="camera-anim-selector"></select>
+            </div>
+            <div class="select-group">
+                <label style="color:#00bcd4; font-weight:bold;">Autoplay:</label>
+                <div style="display:flex; flex-direction:column; gap:6px; margin-top:5px; font-size:11px;">
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input id="autoplay-enabled" type="checkbox" checked style="margin:0;">
+                        <label for="autoplay-enabled" style="margin:0;">Enabled</label>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Delay:</label>
+                        <input type="range" id="autoplay-delay" min="0" max="10" step="0.1" value="0" style="flex:1;">
+                        <span id="val-autoplay-delay" style="min-width:48px;">0.0s</span>
+                    </div>
+                </div>
+            </div>
+            <button id="play-btn">Play Selected</button>
+            <button id="btn-toggle-shader" style="background: #444;">Toon Shader: ON</button>
+            <button id="btn-toggle-light" style="background: #444;">Toggle Lights</button>
+            <div class="select-group">
+                <label>Outline:</label>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <input type="color" id="outline-color" value="#000000"
+                        style="padding:0; border:none; width:30px; height:24px; cursor:pointer; background:none;">
+                    <input type="range" id="outline-thickness" min="0" max="0.1" step="0.001" value="0.004"
+                        style="flex:1;">
+                    <span id="val-outline-thickness" style="font-size:11px; min-width:35px;">0.004</span>
+                </div>
+            </div>
+
+            <div class="select-group">
+                <label style="color:#00bcd4; font-weight:bold;">Toon Lighting:</label>
+                <div style="display:flex; flex-direction:column; gap:5px; margin-top:5px; font-size:11px;">
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Bands:</label>
+                        <input type="range" id="toon-bands" min="2" max="4" step="1" value="2" style="flex:1;">
+                        <span id="val-toon-bands" style="min-width:40px;">2</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Soft1:</label>
+                        <input type="range" id="toon-softness" min="0" max="0.25" step="0.001" value="0.02" style="flex:1;">
+                        <span id="val-toon-softness" style="min-width:40px;">0.020</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Soft2:</label>
+                        <input type="range" id="toon-softness2" min="0" max="0.25" step="0.001" value="0.02" style="flex:1;">
+                        <span id="val-toon-softness2" style="min-width:40px;">0.020</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Soft3:</label>
+                        <input type="range" id="toon-softness3" min="0" max="0.25" step="0.001" value="0.02" style="flex:1;">
+                        <span id="val-toon-softness3" style="min-width:40px;">0.020</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Tint:</label>
+                        <input type="range" id="toon-tint" min="0" max="1" step="0.01" value="1" style="flex:1;">
+                        <span id="val-toon-tint" style="min-width:40px;">1.00</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Ambient:</label>
+                        <input type="range" id="toon-ambient" min="0" max="1" step="0.01" value="0.25" style="flex:1;">
+                        <span id="val-toon-ambient" style="min-width:40px;">0.25</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Shadow:</label>
+                        <input type="range" id="toon-shadow" min="0" max="1" step="0.01" value="0.30" style="flex:1;">
+                        <span id="val-toon-shadow" style="min-width:40px;">0.30</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Hi:</label>
+                        <input type="range" id="toon-highlight" min="1" max="2" step="0.01" value="1.15" style="flex:1;">
+                        <span id="val-toon-highlight" style="min-width:40px;">1.15</span>
+                    </div>
+                </div>
+            </div>
+            <div class="select-group">
+                <label>Background:</label>
+                <div class="swatch-row">
+                    <button class="bg-swatch active" data-color="#111111" style="background:#111111"></button>
+                    <button class="bg-swatch" data-color="#000000" style="background:#000000"></button>
+                    <button class="bg-swatch" data-color="#1b2a41" style="background:#1b2a41"></button>
+                    <button class="bg-swatch" data-color="#2d1e2f" style="background:#2d1e2f"></button>
+                    <button class="bg-swatch" data-color="#2b6777" style="background:#2b6777"></button>
+                    <button class="bg-swatch" data-color="#52ab98" style="background:#52ab98"></button>
+                    <button class="bg-swatch" data-color="#f2be22" style="background:#f2be22"></button>
+                    <button class="bg-swatch" data-color="#f96d00" style="background:#f96d00"></button>
+                    <button class="bg-swatch" data-color="#6c5ce7" style="background:#6c5ce7"></button>
+                    <button class="bg-swatch" data-color="#00bcd4" style="background:#00bcd4"></button>
+                    <button class="bg-swatch" data-color="#ffffff" style="background:#ffffff"></button>
+                </div>
+            </div>
+            <div class="select-group">
+                <label style="color:#00bcd4; font-weight:bold;">Ocean & Sky:</label>
+                <div style="display:flex; flex-direction:column; gap:5px; margin-top:5px; font-size:11px;">
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:50px;">Elev:</label>
+                        <input type="range" id="sky-elevation" min="0" max="90" step="0.1" value="2" style="flex:1;">
+                        <span id="val-sky-elevation" style="min-width:30px;">2.0</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:50px;">Azimuth:</label>
+                        <input type="range" id="sky-azimuth" min="-180" max="180" step="0.1" value="180"
+                            style="flex:1;">
+                        <span id="val-sky-azimuth" style="min-width:30px;">180.0</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:50px;">World:</label>
+                        <input type="range" id="beach-rotation" min="-180" max="180" step="0.1" value="0" style="flex:1;">
+                        <span id="val-beach-rotation" style="min-width:40px;">0.0</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:50px;">Expo:</label>
+                        <input type="range" id="sky-exposure" min="0" max="1" step="0.0001" value="0.1" style="flex:1;">
+                        <span id="val-sky-exposure" style="min-width:40px;">0.1000</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:50px;">Distort:</label>
+                        <input type="range" id="water-distortion" min="0" max="8" step="0.1" value="3.7"
+                            style="flex:1;">
+                        <span id="val-water-distort" style="min-width:30px;">3.7</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:50px;">Size:</label>
+                        <input type="range" id="water-size" min="0.1" max="10" step="0.1" value="1.0" style="flex:1;">
+                        <span id="val-water-size" style="min-width:30px;">1.0</span>
+                    </div>
+                    <div style="margin-top: 8px; color:#ccc; font-size:11px;">Clouds:</div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Coverage:</label>
+                        <input type="range" id="cloud-coverage" min="0" max="1" step="0.01" value="0.4" style="flex:1;">
+                        <span id="val-cloud-coverage" style="min-width:40px;">0.40</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Density:</label>
+                        <input type="range" id="cloud-density" min="0" max="1" step="0.01" value="0.5" style="flex:1;">
+                        <span id="val-cloud-density" style="min-width:40px;">0.50</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Elev:</label>
+                        <input type="range" id="cloud-elevation" min="0" max="1" step="0.01" value="0.5" style="flex:1;">
+                        <span id="val-cloud-elevation" style="min-width:40px;">0.50</span>
+                    </div>
+                    <button id="btn-toggle-ocean" style="background: #2b6777; margin-top: 5px;">Toggle Ocean:
+                        ON</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import maps polyfill -->
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+
+    <!-- Three.js Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./three.js-dev/build/three.module.js",
+                "three/addons/": "./three.js-dev/examples/jsm/",
+                "three/addons/objects/Sky.js": "./three.js-dev/ONLYWATER/beach/jsm/objects/Sky.js"
+            }
+        }
+    </script>
+
+    <!-- GSAP for smooth animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <!-- Main Application -->
+    <script type="module" src="./main.js"></script>
 </body>
+
 </html>

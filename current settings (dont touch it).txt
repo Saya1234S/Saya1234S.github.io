@@ -1,0 +1,78 @@
+{
+  "ocean": {
+    "elevation": 2,
+    "azimuth": 180,
+    "worldRotation": 80.3,
+    "exposure": 0.1,
+    "cloudCoverage": 0.4,
+    "cloudDensity": 0.93,
+    "cloudElevation": 0.5,
+    "distortionScale": 3.7,
+    "size": 1,
+    "oceanVisible": true
+  },
+  "physics": {
+    "windYawDeg": 210,
+    "windPitchDeg": 15,
+    "windStrength": 5.7,
+    "gustStrength": 1.29,
+    "gustFrequency": 1.8,
+    "turbulence": 5,
+    "windNoise": 1.5,
+    "windSpread": 0.2,
+    "bendAllowed": 0,
+    "gravity": 3.7,
+    "damping": 0.03,
+    "iterations": 1
+  },
+  "toon": {
+    "edgeColor": "#95635f",
+    "edgeWidthRatio": 0.001
+  },
+  "toonLighting": {
+    "bands": 2,
+    "softness1": 0.022,
+    "softness2": 0.022,
+    "softness3": 0.022,
+    "softness": 0.022,
+    "tint": 1,
+    "ambient": 0.5,
+    "shadow": 0.3,
+    "highlight": 1.15,
+    "t1": 0.5,
+    "t2": 0.75,
+    "t3": 0.9,
+    "mid": 0.65,
+    "light": 1
+  },
+  "chains": [
+    {
+      "startName": "back_hair33",
+      "endName": "back_hair315"
+    },
+    {
+      "startName": "back_hair23",
+      "endName": "back_hair215"
+    },
+    {
+      "startName": "back_hair13",
+      "endName": "back_hair115"
+    },
+    {
+      "startName": "back_hair03",
+      "endName": "back_hair015"
+    },
+    {
+      "startName": "back_hair42",
+      "endName": "back_hair47"
+    }
+  ],
+  "animation": {
+    "arona": "SMPLH_Animation Retarget",
+    "camera": "Action"
+  },
+  "autoplay": {
+    "enabled": true,
+    "delaySec": 2.1
+  }
+}
