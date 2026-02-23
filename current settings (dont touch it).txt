@@ -73,6 +73,21 @@
   },
   "autoplay": {
     "enabled": true,
-    "delaySec": 2.1
+    "delaySec": 0
+  },
+  "music": {
+    "enabled": true,
+    "delaySec": 1.8,
+    "volume": 0.5,
+    "loop": false
+  },
+  "seashore": {
+    "enabled": true,
+    "delaySec": 0,
+    "volume": 0.5,
+    "loop": true
+  },
+  "cameraControls": {
+    "disabled": true
   }
 }

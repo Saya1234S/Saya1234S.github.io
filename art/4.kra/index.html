@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>4.kra</title>
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      transition: opacity 1s ease;
+    }
+
+    canvas {
+      display: block;
+    }
+
+    /* Arona layer (created by main.js as #arona-container) */
+    #arona-container {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+    }
+
+    #arona-container canvas {
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+    }
+
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-family: sans-serif;
+      pointer-events: none;
+      text-align: center;
+      z-index: 20;
+    }
+
+    /* Loading Overlay */
+    #loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Segoe UI', sans-serif;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+
+    #loading-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .loader-title {
+      color: #fff;
+      font-size: 2.5rem;
+      font-weight: 300;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      margin-bottom: 60px;
+      opacity: 0.9;
+      text-shadow: 0 0 20px rgba(233, 69, 96, 0.5);
+    }
+
+    .loader-container {
+      width: 300px;
+      text-align: center;
+    }
+
+    .loader-bar-bg {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .loader-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #e94560, #ff6b6b);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+    }
+
+    .loader-percent {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.9rem;
+      margin-top: 15px;
+      letter-spacing: 2px;
+    }
+
+    .loader-enter-btn {
+      margin-top: 40px;
+      padding: 15px 60px;
+      font-size: 1.1rem;
+      font-weight: 500;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #fff;
+      background: transparent;
+      border: 2px solid #e94560;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      opacity: 0;
+      transform: translateY(20px);
+      pointer-events: none;
+    }
+
+    .loader-enter-btn.visible {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .loader-enter-btn:hover {
+      background: #e94560;
+      box-shadow: 0 0 30px rgba(233, 69, 96, 0.5);
+    }
+
+    .loader-enter-btn:active {
+      transform: scale(0.98);
+    }
+
+    /* Timelapse content */
+    #content {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      display: none;
+      background: #000;
+    }
+
+    #timelapse {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      display: block;
+    }
+
+    /* Keep ALL main.js UI elements present but hidden */
+    #ui-container,
+    #physics-ui,
+    #hierarchy-ui,
+    #toggle-hierarchy {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Loading Overlay -->
+  <div id="loading-overlay">
+    <div class="loader-title">4.kra</div>
+    <div class="loader-container">
+      <div class="loader-bar-bg">
+        <div class="loader-bar-fill" id="loader-bar-fill"></div>
+      </div>
+      <div class="loader-percent" id="loader-percent">Loading... 0%</div>
+    </div>
+    <button class="loader-enter-btn" id="loader-enter-btn">Enter</button>
+  </div>
+
+  <div id="loading" style="display:none;">Loading Arona…<br><small>(Make sure your model is in the models folder)</small></div>
+
+  <!-- Full UI from main page (hidden) so settings file works -->
+  <button id="toggle-hierarchy">Show Hierarchy</button>
+  <div id="hierarchy-ui">
+    <div id="hierarchy-resizer"></div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h3 style="margin: 0;">Bone Hierarchy</h3>
+      <button id="close-hierarchy"
+        style="background:none; border:none; color:white; font-size: 16px; cursor:pointer;">X</button>
+    </div>
+    <div id="hierarchy-search-container">
+      <input type="text" id="hierarchy-search" placeholder="Search bones... (e.g. Hair)">
+    </div>
+    <div style="padding: 5px; background: #222; border: 1px solid #444; margin-bottom: 10px;">
+      <div>Start: <span id="lbl-start">None</span></div>
+      <div>End: <span id="lbl-end">None</span></div>
+      <button id="btn-create-phys"
+        style="width: 100%; margin-top: 5px; padding: 5px; background: #28a745; border:none; color:white; cursor:pointer;">Apply
+        Physics</button>
+      <div id="phys-msg" style="color: #ffc107; font-size: 10px; margin-top: 5px;"></div>
+    </div>
+    <div id="hierarchy-content"></div>
+  </div>
+
+  <div id="physics-ui">
+    <div
+      style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 5px;">
+      <h3>Hair Physics</h3>
+      <button id="btn-toggle-physics-panel"
+        style="margin: 0; padding: 2px 5px; font-size: 10px; background: #444;">Hide Physics</button>
+    </div>
+    <div id="physics-content">
+      <div style="margin-bottom: 8px;">
+        <div style="font-size: 11px; color: #ccc; margin-bottom: 4px;">Active Chains:</div>
+        <div id="chains-list">
+          <div style="color: #666; font-style: italic; padding: 4px;">No chains added yet.</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 5px; margin-bottom: 15px; border-top: 1px solid #444; padding-top: 10px;">
+        <button id="btn-copy-settings" style="flex: 1; background: #2196f3;">Copy All Settings</button>
+        <button id="btn-paste-settings" style="flex: 1; background: #ff9800;">Paste Settings</button>
+      </div>
+      <div class="phys-row">
+        <label for="phys-wind-yaw">Wind Yaw</label>
+        <input id="phys-wind-yaw" type="range" min="0" max="360" step="1" value="210">
+        <div class="phys-val" id="val-wind-yaw">210°</div>
+      </div>
+      <div class="phys-row">
+        <label for="phys-wind-pitch">Wind Pitch</label>
+        <input id="phys-wind-pitch" type="range" min="-90" max="90" step="1" value="0">
+        <div class="phys-val" id="val-wind-pitch">0°</div>
+      </div>
+      <div class="phys-row">
+        <label for="phys-wind">Wind Strength</label>
+        <input id="phys-wind" type="range" min="0" max="10" step="0.1" value="1.5">
+        <div class="phys-val" id="val-wind">1.5</div>
+      </div>
+      <div class="phys-row">
+        <label for="phys-gust">Gust</label>
+        <input id="phys-gust" type="range" min="0" max="2" step="0.01" value="0.3">
+        <div class="phys-val" id="val-gust">0.30</div>
+      </div>
+      <div class="phys-row">
+        <label for="phys-turb">Turbulence</label>
+        <input id="phys-turb" type="range" min="0" max="5" step="0.05" value="2.0">
+        <div class="phys-val" id="val-turb">2.00</div>
+      </div>
+      <div class="phys-row">
+        <label for="phys-wind-noise">Strand Phase</label>
+        <input id="phys-wind-noise" type="range" min="0" max="10" step="0.1" value="1.5">
+        <div class="phys-val" id="val-wind-noise">1.5</div>
+      </div>
+      <div class="phys-row">
+        <label for="phys-wind-spread">Strand Spread</label>
+        <input id="phys-wind-spread" type="range" min="0" max="1" step="0.01" value="0.2">
+        <div class="phys-val" id="val-wind-spread">0.20</div>
+      </div>
+      <div class="phys-row">
+        <label for="phys-gravity">Gravity</label>
+        <input id="phys-gravity" type="range" min="0" max="30" step="0.1" value="9">
+        <div class="phys-val" id="val-gravity">9.0</div>
+      </div>
+      <div class="phys-row">
+        <label for="phys-damping">Damping</label>
+        <input id="phys-damping" type="range" min="0" max="0.2" step="0.001" value="0.03">
+        <div class="phys-val" id="val-damping">0.030</div>
+      </div>
+      <div class="phys-row">
+        <label for="phys-iter">Hardness</label>
+        <input id="phys-iter" type="range" min="1" max="30" step="1" value="12">
+        <div class="phys-val" id="val-iter">12</div>
+      </div>
+      <div class="phys-row">
+        <label for="phys-bend">Bend Allowed</label>
+        <input id="phys-bend" type="range" min="0" max="1" step="0.01" value="0.75">
+        <div class="phys-val" id="val-bend">0.75</div>
+      </div>
+      <div class="phys-hint">Tip: pick Start bone near scalp, End at strand tip.</div>
+    </div>
+  </div>
+
+  <div id="ui-container">
+    <div
+      style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 5px;">
+      <h3 style="margin:0; font-size:14px; text-transform: uppercase; letter-spacing: 1px;">Animations</h3>
+      <button id="btn-toggle-main-panel"
+        style="margin: 0; padding: 2px 5px; font-size: 10px; background: #444;">Hide</button>
+    </div>
+    <div id="ui-content">
+      <div class="select-group">
+        <label for="arona-anim-selector">Arona Animation:</label>
+        <select id="arona-anim-selector"></select>
+      </div>
+      <div class="select-group">
+        <label for="camera-anim-selector">Camera Animation:</label>
+        <select id="camera-anim-selector"></select>
+      </div>
+      <div class="select-group">
+        <label style="color:#00bcd4; font-weight:bold;">Autoplay:</label>
+        <div style="display:flex; flex-direction:column; gap:6px; margin-top:5px; font-size:11px;">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input id="autoplay-enabled" type="checkbox" checked style="margin:0;">
+            <label for="autoplay-enabled" style="margin:0;">Enabled</label>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Delay:</label>
+            <input type="range" id="autoplay-delay" min="0" max="10" step="0.1" value="0" style="flex:1;">
+            <span id="val-autoplay-delay" style="min-width:48px;">0.0s</span>
+          </div>
+        </div>
+      </div>
+      <div class="select-group">
+        <label style="color:#00bcd4; font-weight:bold;">Camera Controls:</label>
+        <div style="display:flex; gap:8px; align-items:center; margin-top:5px; font-size:11px;">
+          <input id="camera-controls-disabled" type="checkbox" style="margin:0;">
+          <label for="camera-controls-disabled" style="margin:0;">Disable right-click look & WASDQE movement</label>
+        </div>
+      </div>
+      <div class="select-group">
+        <label style="color:#00bcd4; font-weight:bold;">Music (1.mp3):</label>
+        <div style="display:flex; flex-direction:column; gap:6px; margin-top:5px; font-size:11px;">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input id="music-enabled" type="checkbox" checked style="margin:0;">
+            <label for="music-enabled" style="margin:0;">Enabled</label>
+            <input id="music-loop" type="checkbox" checked style="margin:0; margin-left: 8px;">
+            <label for="music-loop" style="margin:0;">Loop</label>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Delay:</label>
+            <input type="range" id="music-delay" min="0" max="10" step="0.1" value="0" style="flex:1;">
+            <span id="val-music-delay" style="min-width:48px;">0.0s</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Volume:</label>
+            <input type="range" id="music-volume" min="0" max="1" step="0.01" value="0.5" style="flex:1;">
+            <span id="val-music-volume" style="min-width:48px;">50%</span>
+          </div>
+        </div>
+      </div>
+      <div class="select-group">
+        <label style="color:#00bcd4; font-weight:bold;">Seashore:</label>
+        <div style="display:flex; flex-direction:column; gap:6px; margin-top:5px; font-size:11px;">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input id="seashore-enabled" type="checkbox" checked style="margin:0;">
+            <label for="seashore-enabled" style="margin:0;">Enabled</label>
+            <input id="seashore-loop" type="checkbox" checked style="margin:0; margin-left: 8px;">
+            <label for="seashore-loop" style="margin:0;">Loop</label>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Delay:</label>
+            <input type="range" id="seashore-delay" min="0" max="10" step="0.1" value="0" style="flex:1;">
+            <span id="val-seashore-delay" style="min-width:48px;">0.0s</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Volume:</label>
+            <input type="range" id="seashore-volume" min="0" max="1" step="0.01" value="0.5" style="flex:1;">
+            <span id="val-seashore-volume" style="min-width:48px;">50%</span>
+          </div>
+        </div>
+      </div>
+      <button id="play-btn">Play Selected</button>
+      <button id="btn-toggle-shader" style="background: #444;">Toon Shader: ON</button>
+      <button id="btn-toggle-light" style="background: #444;">Toggle Lights</button>
+      <div class="select-group">
+        <label>Outline:</label>
+        <div style="display:flex; gap:5px; align-items:center;">
+          <input type="color" id="outline-color" value="#000000"
+            style="padding:0; border:none; width:30px; height:24px; cursor:pointer; background:none;">
+          <input type="range" id="outline-thickness" min="0" max="0.1" step="0.001" value="0.004" style="flex:1;">
+          <span id="val-outline-thickness" style="font-size:11px; min-width:35px;">0.004</span>
+        </div>
+      </div>
+      <div class="select-group">
+        <label style="color:#00bcd4; font-weight:bold;">Toon Lighting:</label>
+        <div style="display:flex; flex-direction:column; gap:5px; margin-top:5px; font-size:11px;">
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Bands:</label>
+            <input type="range" id="toon-bands" min="2" max="4" step="1" value="2" style="flex:1;">
+            <span id="val-toon-bands" style="min-width:40px;">2</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Soft1:</label>
+            <input type="range" id="toon-softness" min="0" max="0.25" step="0.001" value="0.02" style="flex:1;">
+            <span id="val-toon-softness" style="min-width:40px;">0.020</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Soft2:</label>
+            <input type="range" id="toon-softness2" min="0" max="0.25" step="0.001" value="0.02" style="flex:1;">
+            <span id="val-toon-softness2" style="min-width:40px;">0.020</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Soft3:</label>
+            <input type="range" id="toon-softness3" min="0" max="0.25" step="0.001" value="0.02" style="flex:1;">
+            <span id="val-toon-softness3" style="min-width:40px;">0.020</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Tint:</label>
+            <input type="range" id="toon-tint" min="0" max="1" step="0.01" value="1" style="flex:1;">
+            <span id="val-toon-tint" style="min-width:40px;">1.00</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Ambient:</label>
+            <input type="range" id="toon-ambient" min="0" max="1" step="0.01" value="0.25" style="flex:1;">
+            <span id="val-toon-ambient" style="min-width:40px;">0.25</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Shadow:</label>
+            <input type="range" id="toon-shadow" min="0" max="1" step="0.01" value="0.30" style="flex:1;">
+            <span id="val-toon-shadow" style="min-width:40px;">0.30</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Hi:</label>
+            <input type="range" id="toon-highlight" min="1" max="2" step="0.01" value="1.15" style="flex:1;">
+            <span id="val-toon-highlight" style="min-width:40px;">1.15</span>
+          </div>
+        </div>
+      </div>
+      <div class="select-group">
+        <label>Background:</label>
+        <div class="swatch-row">
+          <button class="bg-swatch active" data-color="#111111" style="background:#111111"></button>
+          <button class="bg-swatch" data-color="#000000" style="background:#000000"></button>
+          <button class="bg-swatch" data-color="#1b2a41" style="background:#1b2a41"></button>
+          <button class="bg-swatch" data-color="#2d1e2f" style="background:#2d1e2f"></button>
+          <button class="bg-swatch" data-color="#2b6777" style="background:#2b6777"></button>
+          <button class="bg-swatch" data-color="#52ab98" style="background:#52ab98"></button>
+          <button class="bg-swatch" data-color="#f2be22" style="background:#f2be22"></button>
+          <button class="bg-swatch" data-color="#f96d00" style="background:#f96d00"></button>
+          <button class="bg-swatch" data-color="#6c5ce7" style="background:#6c5ce7"></button>
+          <button class="bg-swatch" data-color="#00bcd4" style="background:#00bcd4"></button>
+          <button class="bg-swatch" data-color="#ffffff" style="background:#ffffff"></button>
+        </div>
+      </div>
+      <div class="select-group">
+        <label style="color:#00bcd4; font-weight:bold;">Ocean & Sky:</label>
+        <div style="display:flex; flex-direction:column; gap:5px; margin-top:5px; font-size:11px;">
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:50px;">Elev:</label>
+            <input type="range" id="sky-elevation" min="0" max="90" step="0.1" value="2" style="flex:1;">
+            <span id="val-sky-elevation" style="min-width:30px;">2.0</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:50px;">Azimuth:</label>
+            <input type="range" id="sky-azimuth" min="-180" max="180" step="0.1" value="180" style="flex:1;">
+            <span id="val-sky-azimuth" style="min-width:30px;">180.0</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:50px;">World:</label>
+            <input type="range" id="beach-rotation" min="-180" max="180" step="0.1" value="0" style="flex:1;">
+            <span id="val-beach-rotation" style="min-width:40px;">0.0</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:50px;">Expo:</label>
+            <input type="range" id="sky-exposure" min="0" max="1" step="0.0001" value="0.1" style="flex:1;">
+            <span id="val-sky-exposure" style="min-width:40px;">0.1000</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:50px;">Distort:</label>
+            <input type="range" id="water-distortion" min="0" max="8" step="0.1" value="3.7" style="flex:1;">
+            <span id="val-water-distort" style="min-width:30px;">3.7</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:50px;">Size:</label>
+            <input type="range" id="water-size" min="0.1" max="10" step="0.1" value="1.0" style="flex:1;">
+            <span id="val-water-size" style="min-width:30px;">1.0</span>
+          </div>
+          <div style="margin-top: 8px; color:#ccc; font-size:11px;">Clouds:</div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Coverage:</label>
+            <input type="range" id="cloud-coverage" min="0" max="1" step="0.01" value="0.4" style="flex:1;">
+            <span id="val-cloud-coverage" style="min-width:40px;">0.40</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Density:</label>
+            <input type="range" id="cloud-density" min="0" max="1" step="0.01" value="0.5" style="flex:1;">
+            <span id="val-cloud-density" style="min-width:40px;">0.50</span>
+          </div>
+          <div style="display:flex; gap:5px; align-items:center;">
+            <label style="width:70px;">Elev:</label>
+            <input type="range" id="cloud-elevation" min="0" max="1" step="0.01" value="0.5" style="flex:1;">
+            <span id="val-cloud-elevation" style="min-width:40px;">0.50</span>
+          </div>
+          <button id="btn-toggle-ocean" style="background: #2b6777; margin-top: 5px;">Toggle Ocean: ON</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timelapse content (hidden initially) -->
+  <div id="content">
+    <video id="timelapse" src="./4.3.mp4" loop playsinline muted></video>
+  </div>
+
+  <!-- Import maps polyfill -->
+  <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+
+  <!-- Three.js Import Map (paths relative to /art/4.kra/) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../../three.js-dev/build/three.module.js",
+        "three/addons/": "../../three.js-dev/examples/jsm/",
+        "three/addons/objects/Sky.js": "../../three.js-dev/ONLYWATER/beach/jsm/objects/Sky.js"
+      }
+    }
+  </script>
+
+  <!-- GSAP (used by main.js) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <script>
+    const revealTimelapse = () => {
+      if (window.__eonoIntro && window.__eonoIntro._revealed) return;
+      if (!window.__eonoIntro) window.__eonoIntro = {};
+      window.__eonoIntro._revealed = true;
+
+      // Stop rendering / interactions on the heavy intro scene.
+      window.__eonoIntro.stopRender = true;
+      window.__eonoIntro.disableInteraction = true;
+
+      const aronaLayer = document.getElementById('arona-container');
+      const loading = document.getElementById('loading');
+      const content = document.getElementById('content');
+      const video = document.getElementById('timelapse');
+
+      if (loading) loading.style.display = 'none';
+      if (aronaLayer) aronaLayer.style.display = 'none';
+      if (content) content.style.display = 'block';
+
+      if (video) {
+        const p = video.play();
+        if (p && typeof p.catch === 'function') p.catch(() => { });
+      }
+    };
+
+    // main.js can call this when finger hit-testing is enabled later.
+    window.__eonoIntro = {
+      onFingerTap: revealTimelapse
+    };
+
+    // Tap anywhere on screen to reveal the timelapse.
+    // Only activates after user has entered (loading overlay dismissed).
+    // Uses pointerdown so ripple triggers first, then after a short delay we reveal.
+    let tapToRevealActive = false;
+    window.addEventListener('pointerdown', (e) => {
+      // Ignore if loading overlay is still visible
+      const overlay = document.getElementById('loading-overlay');
+      if (overlay && !overlay.classList.contains('hidden')) return;
+      
+      // Ignore clicks on overlay elements (belt and suspenders)
+      if (e.target && e.target.closest && e.target.closest('#loading-overlay')) return;
+      
+      // Ignore secondary buttons
+      if (typeof e.button === 'number' && e.button !== 0) return;
+      // Prevent multiple triggers
+      if (tapToRevealActive) return;
+      tapToRevealActive = true;
+      // Let ripple effect show for a moment before transitioning
+      setTimeout(revealTimelapse, 600);
+    });
+  </script>
+
+  <!-- Audio Elements -->
+  <audio id="music-audio" loop preload="auto">
+    <source src="../../music/1.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="seashore-audio" loop preload="auto">
+    <source src="../../music/seashore.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- Arona intro -->
+  <script type="module" src="../../main.js"></script>
+</body>
+
+</html>

@@ -21,12 +21,14 @@ let bloomPass;
 let hemiLight;
 
 const SETTINGS_TXT_FILENAME = 'current settings (dont touch it).txt';
-const SETTINGS_TXT_URL = encodeURI(`./${SETTINGS_TXT_FILENAME}`);
-const HIDE_UI_URL = './hide.ui';
+// Use module-relative URLs so this works from nested pages like /art/...
+const SETTINGS_TXT_URL = new URL(`./${SETTINGS_TXT_FILENAME}`, import.meta.url).href;
+const HIDE_UI_URL = new URL('./hide.ui', import.meta.url).href;
 
 let uiLockedHidden = false;
 let pendingStartupSettings = null;
 let autoplayScheduled = false;
+let userEnteredScene = false;
 
 let hideUiCheckPromise = null;
 
@@ -34,6 +36,22 @@ const autoplaySettings = {
     enabled: true,
     delaySec: 0.0,
 };
+
+const musicSettings = {
+    enabled: true,
+    delaySec: 0.0,
+    volume: 0.5,
+    loop: true
+};
+let musicScheduled = false;
+
+const seashoreSettings = {
+    enabled: true,
+    delaySec: 0.0,
+    volume: 0.5,
+    loop: true
+};
+let seashoreScheduled = false;
 
 // --- Ocean & Sky Globals ---
 let water, sky, sun;
@@ -227,6 +245,61 @@ function _scheduleAutoplayIfEnabled() {
     }, delayMs);
 }
 
+function _scheduleMusicIfEnabled() {
+    if (musicScheduled) return;
+    if (!musicSettings.enabled) return;
+    musicScheduled = true;
+    const delayMs = Math.max(0, Math.floor((musicSettings.delaySec || 0) * 1000));
+    window.setTimeout(() => {
+        const musicAudio = document.getElementById('music-audio');
+        if (musicAudio) {
+            musicAudio.volume = musicSettings.volume;
+            musicAudio.loop = !!musicSettings.loop;
+            // Attempt to play; if blocked, retry on first interaction
+            const p = musicAudio.play();
+            if (p && typeof p.catch === 'function') {
+                p.catch(() => {
+                    // If blocked, add a one-time listener to play
+                    const unlock = () => {
+                        musicAudio.play().catch(() => {});
+                        window.removeEventListener('pointerdown', unlock);
+                        window.removeEventListener('keydown', unlock);
+                    };
+                    window.addEventListener('pointerdown', unlock);
+                    window.addEventListener('keydown', unlock);
+                });
+            }
+        }
+    }, delayMs);
+}
+
+function _scheduleSeashoreIfEnabled() {
+    if (seashoreScheduled) return;
+    if (!seashoreSettings.enabled) return;
+    seashoreScheduled = true;
+    const delayMs = Math.max(0, Math.floor((seashoreSettings.delaySec || 0) * 1000));
+    window.setTimeout(() => {
+        const seashoreAudio = document.getElementById('seashore-audio');
+        if (seashoreAudio) {
+            seashoreAudio.volume = seashoreSettings.volume;
+            seashoreAudio.loop = !!seashoreSettings.loop;
+            // Attempt to play; if blocked, retry on first interaction
+            const p = seashoreAudio.play();
+            if (p && typeof p.catch === 'function') {
+                p.catch(() => {
+                    const unlock = () => {
+                        seashoreAudio.play().catch(() => {});
+                        window.removeEventListener('pointerdown', unlock);
+                        window.removeEventListener('keydown', unlock);
+                    };
+                    window.addEventListener('pointerdown', unlock);
+                    window.addEventListener('keydown', unlock);
+                });
+            }
+        }
+    }, delayMs);
+}
+
 function _applyUiLockedHidden(hidden) {
     uiLockedHidden = !!hidden;
 
@@ -279,10 +352,14 @@ async function _startupLoadSettingsAndUiLock() {
         applyAllSettings(data);
 
         // If the model is already loaded by the time settings arrive,
-        // re-apply (restores chains) and autoplay once.
+        // re-apply (restores chains) and autoplay once (only if user already entered).
         if (model) {
             applyAllSettings(pendingStartupSettings);
-            _scheduleAutoplayIfEnabled();
+            if (userEnteredScene) {
+                _scheduleAutoplayIfEnabled();
+                _scheduleMusicIfEnabled();
+                _scheduleSeashoreIfEnabled();
+            }
         }
     }
 }
@@ -316,6 +393,21 @@ function getAllSettings() {
         autoplay: {
             enabled: !!autoplaySettings.enabled,
             delaySec: Number(autoplaySettings.delaySec) || 0
+        },
+        music: {
+            enabled: !!musicSettings.enabled,
+            delaySec: Number(musicSettings.delaySec) || 0,
+            volume: Number(musicSettings.volume) || 0.5,
+            loop: !!musicSettings.loop
+        },
+        seashore: {
+            enabled: !!seashoreSettings.enabled,
+            delaySec: Number(seashoreSettings.delaySec) || 0,
+            volume: Number(seashoreSettings.volume) || 0.5,
+            loop: !!seashoreSettings.loop
+        },
+        cameraControls: {
+            disabled: cameraControlsDisabled
         }
     };
 }
@@ -333,6 +425,64 @@ function applyAllSettings(data) {
         if (autoDelay) {
             autoDelay.value = String(autoplaySettings.delaySec);
             autoDelay.dispatchEvent(new Event('input'));
+        }
+    }
+
+    if (data.cameraControls) {
+        if (typeof data.cameraControls.disabled === 'boolean') {
+            cameraControlsDisabled = data.cameraControls.disabled;
+        }
+        const camCtrlCheckbox = document.getElementById('camera-controls-disabled');
+        if (camCtrlCheckbox) {
+            camCtrlCheckbox.checked = cameraControlsDisabled;
+        }
+    }
+
+    if (data.music) {
+        if (typeof data.music.enabled === 'boolean') musicSettings.enabled = data.music.enabled;
+        if (typeof data.music.delaySec === 'number') musicSettings.delaySec = data.music.delaySec;
+        if (typeof data.music.volume === 'number') musicSettings.volume = data.music.volume;
+        if (typeof data.music.loop === 'boolean') musicSettings.loop = data.music.loop;
+
+        const musicEnabled = document.getElementById('music-enabled');
+        const musicDelay = document.getElementById('music-delay');
+        const musicVolume = document.getElementById('music-volume');
+        const musicLoop = document.getElementById('music-loop');
+
+        if (musicEnabled) musicEnabled.checked = musicSettings.enabled;
+        if (musicLoop) musicLoop.checked = musicSettings.loop;
+        
+        if (musicDelay) {
+            musicDelay.value = String(musicSettings.delaySec);
+            musicDelay.dispatchEvent(new Event('input'));
+        }
+        if (musicVolume) {
+            musicVolume.value = String(musicSettings.volume);
+            musicVolume.dispatchEvent(new Event('input'));
+        }
+    }
+
+    if (data.seashore) {
+        if (typeof data.seashore.enabled === 'boolean') seashoreSettings.enabled = data.seashore.enabled;
+        if (typeof data.seashore.delaySec === 'number') seashoreSettings.delaySec = data.seashore.delaySec;
+        if (typeof data.seashore.volume === 'number') seashoreSettings.volume = data.seashore.volume;
+        if (typeof data.seashore.loop === 'boolean') seashoreSettings.loop = data.seashore.loop;
+
+        const seashoreEnabled = document.getElementById('seashore-enabled');
+        const seashoreDelay = document.getElementById('seashore-delay');
+        const seashoreVolume = document.getElementById('seashore-volume');
+        const seashoreLoop = document.getElementById('seashore-loop');
+
+        if (seashoreEnabled) seashoreEnabled.checked = seashoreSettings.enabled;
+        if (seashoreLoop) seashoreLoop.checked = seashoreSettings.loop;
+
+        if (seashoreDelay) {
+            seashoreDelay.value = String(seashoreSettings.delaySec);
+            seashoreDelay.dispatchEvent(new Event('input'));
+        }
+        if (seashoreVolume) {
+            seashoreVolume.value = String(seashoreSettings.volume);
+            seashoreVolume.dispatchEvent(new Event('input'));
         }
     }
 
@@ -542,6 +692,9 @@ let isRightMouseDown = false;
 const keys = { w: false, a: false, s: false, d: false, q: false, e: false };
 const moveSpeed = 5;
 const lookSpeed = 0.005;
+
+// Camera controls toggle
+let cameraControlsDisabled = false;
 const euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
 const raycaster = new THREE.Raycaster();
@@ -789,6 +942,7 @@ animate();
 
 function init() {
     const container = document.createElement('div');
+    container.id = 'arona-container';
     document.body.appendChild(container);
 
     // UI Elements
@@ -853,6 +1007,100 @@ function init() {
         autoplayDelay.addEventListener('input', (e) => {
             autoplaySettings.delaySec = parseFloat(e.target.value) || 0;
             if (valAutoplayDelay) valAutoplayDelay.textContent = `${autoplaySettings.delaySec.toFixed(1)}s`;
+        });
+    }
+
+    // Camera Controls Toggle
+    const cameraControlsCheckbox = document.getElementById('camera-controls-disabled');
+    if (cameraControlsCheckbox) {
+        cameraControlsCheckbox.checked = cameraControlsDisabled;
+        cameraControlsCheckbox.addEventListener('change', () => {
+            cameraControlsDisabled = !!cameraControlsCheckbox.checked;
+            // Reset any keys that might be stuck
+            Object.keys(keys).forEach(k => keys[k] = false);
+            isRightMouseDown = false;
+        });
+    }
+
+    // Music UI Elements
+    const musicEnabled = document.getElementById('music-enabled');
+    const musicDelay = document.getElementById('music-delay');
+    const valMusicDelay = document.getElementById('val-music-delay');
+    const musicVolume = document.getElementById('music-volume');
+    const valMusicVolume = document.getElementById('val-music-volume');
+    const musicLoop = document.getElementById('music-loop');
+    const musicAudio = document.getElementById('music-audio');
+
+    if (musicEnabled) {
+        musicEnabled.checked = musicSettings.enabled;
+        musicEnabled.addEventListener('change', () => {
+            musicSettings.enabled = !!musicEnabled.checked;
+        });
+    }
+
+    if (musicLoop) {
+        musicLoop.checked = musicSettings.loop;
+        musicLoop.addEventListener('change', () => {
+            musicSettings.loop = !!musicLoop.checked;
+            if (musicAudio) musicAudio.loop = musicSettings.loop;
+        });
+    }
+
+    if (musicDelay) {
+        if (valMusicDelay) valMusicDelay.textContent = `${Number(musicSettings.delaySec).toFixed(1)}s`;
+        musicDelay.addEventListener('input', (e) => {
+            musicSettings.delaySec = parseFloat(e.target.value) || 0;
+            if (valMusicDelay) valMusicDelay.textContent = `${musicSettings.delaySec.toFixed(1)}s`;
+        });
+    }
+
+    if (musicVolume) {
+        if (valMusicVolume) valMusicVolume.textContent = `${Number(musicSettings.volume * 100).toFixed(0)}%`;
+        musicVolume.addEventListener('input', (e) => {
+            musicSettings.volume = parseFloat(e.target.value) || 0;
+            if (valMusicVolume) valMusicVolume.textContent = `${(musicSettings.volume * 100).toFixed(0)}%`;
+            if (musicAudio) musicAudio.volume = musicSettings.volume;
+        });
+    }
+
+    // Seashore UI Elements
+    const seashoreEnabled = document.getElementById('seashore-enabled');
+    const seashoreDelay = document.getElementById('seashore-delay');
+    const valSeashoreDelay = document.getElementById('val-seashore-delay');
+    const seashoreVolume = document.getElementById('seashore-volume');
+    const valSeashoreVolume = document.getElementById('val-seashore-volume');
+    const seashoreLoop = document.getElementById('seashore-loop');
+    const seashoreAudio = document.getElementById('seashore-audio');
+
+    if (seashoreEnabled) {
+        seashoreEnabled.checked = seashoreSettings.enabled;
+        seashoreEnabled.addEventListener('change', () => {
+            seashoreSettings.enabled = !!seashoreEnabled.checked;
+        });
+    }
+
+    if (seashoreLoop) {
+        seashoreLoop.checked = seashoreSettings.loop;
+        seashoreLoop.addEventListener('change', () => {
+            seashoreSettings.loop = !!seashoreLoop.checked;
+            if (seashoreAudio) seashoreAudio.loop = seashoreSettings.loop;
+        });
+    }
+
+    if (seashoreDelay) {
+        if (valSeashoreDelay) valSeashoreDelay.textContent = `${Number(seashoreSettings.delaySec).toFixed(1)}s`;
+        seashoreDelay.addEventListener('input', (e) => {
+            seashoreSettings.delaySec = parseFloat(e.target.value) || 0;
+            if (valSeashoreDelay) valSeashoreDelay.textContent = `${seashoreSettings.delaySec.toFixed(1)}s`;
+        });
+    }
+
+    if (seashoreVolume) {
+        if (valSeashoreVolume) valSeashoreVolume.textContent = `${Number(seashoreSettings.volume * 100).toFixed(0)}%`;
+        seashoreVolume.addEventListener('input', (e) => {
+            seashoreSettings.volume = parseFloat(e.target.value) || 0;
+            if (valSeashoreVolume) valSeashoreVolume.textContent = `${(seashoreSettings.volume * 100).toFixed(0)}%`;
+            if (seashoreAudio) seashoreAudio.volume = seashoreSettings.volume;
         });
     }
 
@@ -1554,7 +1802,7 @@ function init() {
         {
             textureWidth: 512,
             textureHeight: 512,
-            waterNormals: new THREE.TextureLoader().load('textures/waternormals.jpg', function (texture) {
+            waterNormals: new THREE.TextureLoader().load(new URL('./textures/waternormals.jpg', import.meta.url).href, function (texture) {
                 texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
             }),
             sunDirection: new THREE.Vector3(),
@@ -1606,12 +1854,44 @@ function init() {
     const loader = new GLTFLoader();
 
     // IMPORTANT: This is where it looks for your model!
-    loader.load('./models/arona.glb', async function (gltf) {
-        document.getElementById('loading').style.display = 'none';
+    loader.load(new URL('./models/arona.glb', import.meta.url).href, async function (gltf) {
+        const loadingEl = document.getElementById('loading');
+        if (loadingEl) loadingEl.style.display = 'none';
+
+        // Update loading overlay - show the Enter button
+        const loaderBarFill = document.getElementById('loader-bar-fill');
+        const loaderPercent = document.getElementById('loader-percent');
+        const loaderEnterBtn = document.getElementById('loader-enter-btn');
+        
+        if (loaderBarFill) loaderBarFill.style.width = '100%';
+        if (loaderPercent) loaderPercent.textContent = 'Ready!';
+        if (loaderEnterBtn) {
+            loaderEnterBtn.classList.add('visible');
+            loaderEnterBtn.addEventListener('click', (e) => {
+                // Prevent this click from propagating to scene event listeners
+                e.stopPropagation();
+                e.preventDefault();
+                
+                userEnteredScene = true;
+                const overlay = document.getElementById('loading-overlay');
+                if (overlay) {
+                    overlay.classList.add('hidden');
+                    // Small delay to ensure overlay transition starts before enabling scene interactions
+                    setTimeout(() => {
+                        // Now safe to start audio/animations
+                        if (pendingStartupSettings) {
+                            _scheduleAutoplayIfEnabled();
+                            _scheduleMusicIfEnabled();
+                            _scheduleSeashoreIfEnabled();
+                        }
+                    }, 100);
+                }
+            }, { once: true });
+        }
 
         // Ensure hide.ui is checked before revealing any UI.
         await _checkHideUiLockOnce();
-        if (!uiLockedHidden) uiContainer.style.display = 'flex';
+        if (!uiLockedHidden && uiContainer) uiContainer.style.display = 'flex';
 
         model = gltf.scene;
         scene.add(model);
@@ -1652,7 +1932,7 @@ function init() {
 
         // Load all textures from the Textures folder
         const loadTex = (file, srgb = true) => {
-            const t = textureLoader.load(`./models/Textures/${file}`);
+            const t = textureLoader.load(new URL(`./models/Textures/${file}`, import.meta.url).href);
             t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
             t.flipY = false;
             return t;
@@ -1843,28 +2123,36 @@ function init() {
 
                 // Determine if this is a camera animation
                 const lowerName = name.toLowerCase();
-                let isCameraAnim = lowerName.includes('camera') || clip.tracks.some((track) => track.name.toLowerCase().includes('camera'));
-
-                const option = document.createElement('option');
-                option.value = name;
-                option.textContent = name;
+                const isCameraAnim = lowerName.includes('camera') || clip.tracks.some((track) => track.name.toLowerCase().includes('camera'));
 
                 if (isCameraAnim) {
-                    cameraSelector.appendChild(option);
                     cameraActions[name] = mixer.clipAction(clip);
+                    if (cameraSelector) {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = name;
+                        cameraSelector.appendChild(option);
+                    }
                 } else {
-                    aronaSelector.appendChild(option);
                     aronaActions[name] = mixer.clipAction(clip);
+                    if (aronaSelector) {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = name;
+                        aronaSelector.appendChild(option);
+                    }
                 }
             });
 
-            if (aronaSelector.options.length > 0) aronaSelector.selectedIndex = 0;
-            if (cameraSelector.options.length > 0) cameraSelector.selectedIndex = 0;
+            if (aronaSelector && aronaSelector.options.length > 0) aronaSelector.selectedIndex = 0;
+            if (cameraSelector && cameraSelector.options.length > 0) cameraSelector.selectedIndex = 0;
 
             // Play button logic
-            playBtn.addEventListener('click', () => {
-                playSelectedAnimations();
-            });
+            if (playBtn) {
+                playBtn.addEventListener('click', () => {
+                    playSelectedAnimations();
+                });
+            }
         }
 
         // Find the finger mesh (you might need to adjust the name based on your actual model)
@@ -1888,13 +2176,31 @@ function init() {
             applyAllSettings(pendingStartupSettings);
         }
 
-        // Autoplay once on load only if a root settings TXT was present.
-        // (Autoplay itself is still configurable via UI / copy-paste / settings file.)
-        if (pendingStartupSettings) _scheduleAutoplayIfEnabled();
+        // Note: Autoplay/audio scheduling is now triggered by the Enter button click
+        // to satisfy browser autoplay policies.
 
-    }, undefined, function (error) {
+    }, function (xhr) {
+        // Progress callback for loading bar
+        const loaderBarFill = document.getElementById('loader-bar-fill');
+        const loaderPercent = document.getElementById('loader-percent');
+        if (xhr.lengthComputable) {
+            const percent = Math.round((xhr.loaded / xhr.total) * 100);
+            if (loaderBarFill) loaderBarFill.style.width = percent + '%';
+            if (loaderPercent) loaderPercent.textContent = 'Loading... ' + percent + '%';
+        } else {
+            // If length is not computable, show indeterminate loading
+            if (loaderPercent) loaderPercent.textContent = 'Loading...';
+        }
+    }, function (error) {
         console.error('Error loading model:', error);
-        document.getElementById('loading').innerHTML = 'Error loading model.<br>Did you place <b>arona.glb</b> in the <b>models</b> folder?';
+        const loaderPercent = document.getElementById('loader-percent');
+        const loaderBarFill = document.getElementById('loader-bar-fill');
+        if (loaderPercent) {
+            loaderPercent.innerHTML = '<span style="color:#e94560;">Error loading model.<br>Did you place arona.glb in the models folder?</span>';
+        }
+        if (loaderBarFill) {
+            loaderBarFill.style.background = '#e94560';
+        }
     });
 
     // 5. Post Processing Setup
@@ -1928,14 +2234,14 @@ function init() {
 
     // 6. Event Listeners
     window.addEventListener('resize', onWindowResize);
-    window.addEventListener('click', onClick);
+    window.addEventListener('mousedown', onClick); // Ripple on press, not release
     window.addEventListener('touchstart', onTouch, { passive: false }); // For mobile
 
     // Camera Controls Event Listeners
     window.addEventListener('contextmenu', (e) => e.preventDefault()); // Prevent right-click menu
 
     window.addEventListener('mousedown', (e) => {
-        if (e.button === 2) isRightMouseDown = true;
+        if (e.button === 2 && !cameraControlsDisabled) isRightMouseDown = true;
     });
 
     window.addEventListener('mouseup', (e) => {
@@ -1943,7 +2249,7 @@ function init() {
     });
 
     window.addEventListener('mousemove', (e) => {
-        if (isRightMouseDown && camera) {
+        if (isRightMouseDown && camera && !cameraControlsDisabled) {
             euler.setFromQuaternion(camera.quaternion);
             euler.y -= e.movementX * lookSpeed;
             euler.x -= e.movementY * lookSpeed;
@@ -1959,6 +2265,7 @@ function init() {
             playSelectedAnimations();
             return;
         }
+        if (cameraControlsDisabled) return;
         const key = e.key.toLowerCase();
         if (keys.hasOwnProperty(key)) keys[key] = true;
     });
@@ -2012,6 +2319,7 @@ function addRipple(u, v) {
 }
 
 function checkIntersection(clientX, clientY) {
+    if (window.__eonoIntro?.disableInteraction || window.__eonoIntro?.stopRender) return;
     if (!fingerMesh) return;
 
     // Calculate mouse position in normalized device coordinates (-1 to +1)
@@ -2034,19 +2342,35 @@ function checkIntersection(clientX, clientY) {
     if (intersects.length > 0) {
         console.log("Finger tapped!");
 
+        const onFingerTap = window.__eonoIntro?.onFingerTap;
+        if (typeof onFingerTap === 'function') {
+            try {
+                onFingerTap();
+            } catch (e) {
+                console.error('[Intro] onFingerTap failed', e);
+            }
+            return;
+        }
+
         // Fade out the screen
         document.body.style.opacity = 0;
 
         // Wait for fade out, then redirect
         setTimeout(() => {
-            window.location.href = "home.html";
+            window.location.href = new URL('./home.html', import.meta.url).href;
         }, 1000);
     }
 }
 
 function onClick(event) {
+    // Ignore clicks on loading overlay or its children
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay && !loadingOverlay.classList.contains('hidden')) {
+        return;
+    }
+    
     // Don't let UI interactions trigger the 3D scene click behavior.
-    if (event.target && event.target.closest && event.target.closest('#hierarchy-ui, #toggle-hierarchy, #ui-container, #physics-ui')) {
+    if (event.target && event.target.closest && event.target.closest('#hierarchy-ui, #toggle-hierarchy, #ui-container, #physics-ui, #loading-overlay')) {
         return;
     }
     checkIntersection(event.clientX, event.clientY);
@@ -2054,8 +2378,14 @@ function onClick(event) {
 
 function onTouch(event) {
     if (event.touches.length > 0) {
+        // Ignore touches on loading overlay
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay && !loadingOverlay.classList.contains('hidden')) {
+            return;
+        }
+        
         const target = event.target;
-        if (target && target.closest && target.closest('#hierarchy-ui, #toggle-hierarchy, #ui-container, #physics-ui')) {
+        if (target && target.closest && target.closest('#hierarchy-ui, #toggle-hierarchy, #ui-container, #physics-ui, #loading-overlay')) {
             return;
         }
         checkIntersection(event.touches[0].clientX, event.touches[0].clientY);
@@ -2063,6 +2393,7 @@ function onTouch(event) {
 }
 
 function animate() {
+    if (window.__eonoIntro?.stopRender) return;
     requestAnimationFrame(animate);
 
     const delta = clock.getDelta();
