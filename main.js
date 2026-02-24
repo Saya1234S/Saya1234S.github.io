@@ -2499,7 +2499,7 @@ function init() {
         const loaderEnterBtn = document.getElementById('loader-enter-btn');
 
         if (loaderBarFill) loaderBarFill.style.width = '100%';
-        if (loaderPercent) loaderPercent.textContent = 'Ready!';
+        if (loaderPercent) loaderPercent.textContent = 'We are set!';
         if (loaderEnterBtn) {
             loaderEnterBtn.classList.add('visible');
             loaderEnterBtn.addEventListener('click', (e) => {
