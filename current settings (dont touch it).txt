@@ -4,13 +4,13 @@
       "mode": "random",
       "value": 2,
       "randomMin": 0,
-      "randomMax": 17.4
+      "randomMax": 7.7
     },
     "azimuth": {
       "mode": "random",
       "value": 180,
       "randomMin": -180,
-      "randomMax": 180
+      "randomMax": 131.4
     },
     "worldRotation": {
       "mode": "constant",
@@ -21,8 +21,8 @@
     "exposure": {
       "mode": "random",
       "value": 0.0541,
-      "randomMin": 0,
-      "randomMax": 1
+      "randomMin": 0.16,
+      "randomMax": 0.835
     },
     "cloudCoverage": {
       "mode": "constant",
