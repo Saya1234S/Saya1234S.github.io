@@ -169,6 +169,70 @@
       display: block;
     }
 
+    #video-ui {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80%;
+      max-width: 600px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: opacity 0.5s ease;
+      z-index: 10;
+      backdrop-filter: blur(5px);
+    }
+
+    #video-ui.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #video-ui input[type="range"] {
+      flex: 1;
+      cursor: pointer;
+      accent-color: #00bcd4;
+    }
+
+    #video-ui select {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+      outline: none;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    #video-ui select option {
+      background: #222;
+      color: white;
+    }
+
+    #video-play-pause {
+      background: transparent;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 20px;
+      padding: 0 5px;
+      outline: none;
+      width: 25px;
+      text-align: center;
+      transition: color 0.2s ease;
+    }
+
+    #video-play-pause:hover {
+      color: #00bcd4;
+    }
+
     /* Keep ALL main.js UI elements present but hidden */
     #ui-container,
     #physics-ui,
@@ -657,6 +721,18 @@
   <!-- Timelapse content (hidden initially) -->
   <div id="content">
     <video id="timelapse" src="./4.3.mp4" loop playsinline muted></video>
+    <div id="video-ui" class="hidden">
+      <button id="video-play-pause" title="Play/Pause">⏸</button>
+      <select id="video-speed" title="Playback Speed">
+        <option value="0.25">0.25x</option>
+        <option value="0.5">0.5x</option>
+        <option value="1" selected>1.0x</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2.0x</option>
+        <option value="4">4.0x</option>
+      </select>
+      <input type="range" id="video-slider" min="0" max="100" value="0" step="0.1" title="Timeline">
+    </div>
   </div>
 
   <!-- Import maps polyfill -->
@@ -756,6 +832,79 @@
           };
           checkAndSchedule();
         }, { once: true });
+      }
+
+      // -- Video UI Logic --
+      const video = document.getElementById('timelapse');
+      const videoUI = document.getElementById('video-ui');
+      const videoContent = document.getElementById('content');
+      const speedSelect = document.getElementById('video-speed');
+      const timeSlider = document.getElementById('video-slider');
+      const playPauseBtn = document.getElementById('video-play-pause');
+
+      let hideUITimeout;
+      const resetHideTimer = () => {
+        if (!videoUI) return;
+        videoUI.classList.remove('hidden');
+        clearTimeout(hideUITimeout);
+        hideUITimeout = setTimeout(() => {
+          videoUI.classList.add('hidden');
+        }, 4000);
+      };
+
+      if (videoContent) {
+        videoContent.addEventListener('mousemove', resetHideTimer);
+        videoContent.addEventListener('touchstart', resetHideTimer, { passive: true });
+        videoContent.addEventListener('click', (e) => {
+          // Toggle UI if they click exactly on the video / content background
+          if (e.target === video || e.target === videoContent) {
+            if (videoUI.classList.contains('hidden')) {
+              resetHideTimer();
+            } else {
+              clearTimeout(hideUITimeout);
+              videoUI.classList.add('hidden');
+            }
+          } else {
+            resetHideTimer();
+          }
+        });
+      }
+
+      if (video && timeSlider && speedSelect) {
+        video.addEventListener('timeupdate', () => {
+          if (!video.duration || timeSlider.matches(':active')) return;
+          timeSlider.value = (video.currentTime / video.duration) * 100;
+        });
+
+        timeSlider.addEventListener('input', (e) => {
+          if (!video.duration) return;
+          video.currentTime = (e.target.value / 100) * video.duration;
+          resetHideTimer();
+        });
+
+        speedSelect.addEventListener('change', (e) => {
+          video.playbackRate = parseFloat(e.target.value);
+          resetHideTimer();
+        });
+
+        if (playPauseBtn) {
+          playPauseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (video.paused) video.play();
+            else video.pause();
+            resetHideTimer();
+          });
+        }
+
+        video.addEventListener('play', () => {
+          if (playPauseBtn) playPauseBtn.textContent = '⏸';
+          resetHideTimer();
+        });
+
+        video.addEventListener('pause', () => {
+          if (playPauseBtn) playPauseBtn.textContent = '▶';
+          resetHideTimer();
+        });
       }
     });
   </script>

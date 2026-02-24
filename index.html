@@ -149,6 +149,8 @@
             font-family: sans-serif;
             display: none;
             /* Hidden until model loads */
+            max-height: 85vh;
+            overflow-y: auto;
         }
 
         #ui-content {
@@ -828,7 +830,7 @@
                 </div>
             </div>
             <button id="play-btn">Play Selected</button>
-            <button id="btn-toggle-shader" style="background: #444;">Toon Shader: ON</button>
+            <button id="btn-toggle-shader" style="background: #444;">Shader: Toon</button>
             <button id="btn-toggle-light" style="background: #444;">Toggle Lights</button>
             <div class="select-group">
                 <label>Outline:</label>
@@ -890,6 +892,85 @@
                     </div>
                 </div>
             </div>
+
+            <div class="select-group">
+                <label style="color:#00bcd4; font-weight:bold;">ZaneAtega Shader:</label>
+                <div style="display:flex; flex-direction:column; gap:5px; margin-top:5px; font-size:11px;">
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Light Tint:</label>
+                        <input type="color" id="za-light-tint" value="#ffffff"
+                            style="padding:0; border:none; width:30px; height:24px; cursor:pointer; background:none;">
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Rim Tint:</label>
+                        <input type="color" id="za-rim-tint" value="#ffffff"
+                            style="padding:0; border:none; width:30px; height:24px; cursor:pointer; background:none;">
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Ambient:</label>
+                        <input type="color" id="za-ambient-tint" value="#ffffff"
+                            style="padding:0; border:none; width:30px; height:24px; cursor:pointer; background:none;">
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Shadow:</label>
+                        <input type="color" id="za-shadow-tint" value="#ffffff"
+                            style="padding:0; border:none; width:30px; height:24px; cursor:pointer; background:none;">
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Tint Str:</label>
+                        <input type="range" id="za-tint-strength" min="0" max="1" step="0.01" value="1.0"
+                            style="flex:1;">
+                        <span id="val-za-tint-strength" style="min-width:40px;">1.00</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Glossy:</label>
+                        <input type="range" id="za-glossiness" min="1" max="100" step="0.5" value="10" style="flex:1;">
+                        <span id="val-za-glossiness" style="min-width:40px;">10.0</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Exposure:</label>
+                        <input type="range" id="za-counter-exposure" min="0" max="2" step="0.01" value="1.0"
+                            style="flex:1;">
+                        <span id="val-za-counter-exposure" style="min-width:40px;">1.00</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Saturation:</label>
+                        <input type="range" id="za-saturation" min="0" max="2" step="0.01" value="1.0" style="flex:1;">
+                        <span id="val-za-saturation" style="min-width:40px;">1.00</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Hair Sat:</label>
+                        <input type="range" id="za-hair-saturation" min="0" max="2" step="0.01" value="1.0"
+                            style="flex:1;">
+                        <span id="val-za-hair-saturation" style="min-width:40px;">1.00</span>
+                    </div>
+                    <div style="margin-top: 4px; color:#ccc; font-size:10px;">Outline:</div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Thickness:</label>
+                        <input type="range" id="za-outline-thickness" min="0" max="0.05" step="0.0005" value="0.003"
+                            style="flex:1;">
+                        <span id="val-za-outline-thickness" style="min-width:40px;">0.0030</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Burn Int:</label>
+                        <input type="range" id="za-outline-burn" min="0" max="2" step="0.01" value="1.0"
+                            style="flex:1;">
+                        <span id="val-za-outline-burn" style="min-width:40px;">1.00</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Light Inf:</label>
+                        <input type="range" id="za-outline-light" min="0" max="1" step="0.01" value="0.5"
+                            style="flex:1;">
+                        <span id="val-za-outline-light" style="min-width:40px;">0.50</span>
+                    </div>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <label style="width:70px;">Max Bright:</label>
+                        <input type="range" id="za-outline-max-bright" min="0" max="2" step="0.01" value="1.0"
+                            style="flex:1;">
+                        <span id="val-za-outline-max-bright" style="min-width:40px;">1.00</span>
+                    </div>
+                </div>
+            </div>
             <div class="select-group">
                 <label>Background:</label>
                 <div class="swatch-row">
@@ -907,58 +988,220 @@
                 </div>
             </div>
             <div class="select-group">
-                <label style="color:#00bcd4; font-weight:bold;">Ocean & Sky:</label>
+                <label style="color:#00bcd4; font-weight:bold;">Ocean &amp; Sky:</label>
                 <div style="display:flex; flex-direction:column; gap:5px; margin-top:5px; font-size:11px;">
+
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:50px;">Elev:</label>
                         <input type="range" id="sky-elevation" min="0" max="90" step="0.1" value="2" style="flex:1;">
                         <span id="val-sky-elevation" style="min-width:30px;">2.0</span>
+                        <select id="sky-elevation-mode"
+                            style="width:52px; font-size:10px; padding:1px 2px; background:#222; color:#fff; border:1px solid #555; border-radius:3px;">
+                            <option value="constant">Const</option>
+                            <option value="random">Rand</option>
+                        </select>
                     </div>
+                    <div id="sky-elevation-rmin-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:55px;">
+                        <label style="width:30px; color:#888;">Min:</label>
+                        <input type="range" id="sky-elevation-rmin" min="0" max="90" step="0.1" value="0"
+                            style="flex:1;">
+                    </div>
+                    <div id="sky-elevation-rmax-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:55px;">
+                        <label style="width:30px; color:#888;">Max:</label>
+                        <input type="range" id="sky-elevation-rmax" min="0" max="90" step="0.1" value="90"
+                            style="flex:1;">
+                    </div>
+
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:50px;">Azimuth:</label>
                         <input type="range" id="sky-azimuth" min="-180" max="180" step="0.1" value="180"
                             style="flex:1;">
                         <span id="val-sky-azimuth" style="min-width:30px;">180.0</span>
+                        <select id="sky-azimuth-mode"
+                            style="width:52px; font-size:10px; padding:1px 2px; background:#222; color:#fff; border:1px solid #555; border-radius:3px;">
+                            <option value="constant">Const</option>
+                            <option value="random">Rand</option>
+                        </select>
                     </div>
+                    <div id="sky-azimuth-rmin-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:55px;">
+                        <label style="width:30px; color:#888;">Min:</label>
+                        <input type="range" id="sky-azimuth-rmin" min="-180" max="180" step="0.1" value="-180"
+                            style="flex:1;">
+                    </div>
+                    <div id="sky-azimuth-rmax-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:55px;">
+                        <label style="width:30px; color:#888;">Max:</label>
+                        <input type="range" id="sky-azimuth-rmax" min="-180" max="180" step="0.1" value="180"
+                            style="flex:1;">
+                    </div>
+
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:50px;">World:</label>
                         <input type="range" id="beach-rotation" min="-180" max="180" step="0.1" value="0"
                             style="flex:1;">
                         <span id="val-beach-rotation" style="min-width:40px;">0.0</span>
+                        <select id="beach-rotation-mode"
+                            style="width:52px; font-size:10px; padding:1px 2px; background:#222; color:#fff; border:1px solid #555; border-radius:3px;">
+                            <option value="constant">Const</option>
+                            <option value="random">Rand</option>
+                        </select>
                     </div>
+                    <div id="beach-rotation-rmin-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:55px;">
+                        <label style="width:30px; color:#888;">Min:</label>
+                        <input type="range" id="beach-rotation-rmin" min="-180" max="180" step="0.1" value="-180"
+                            style="flex:1;">
+                    </div>
+                    <div id="beach-rotation-rmax-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:55px;">
+                        <label style="width:30px; color:#888;">Max:</label>
+                        <input type="range" id="beach-rotation-rmax" min="-180" max="180" step="0.1" value="180"
+                            style="flex:1;">
+                    </div>
+
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:50px;">Expo:</label>
                         <input type="range" id="sky-exposure" min="0" max="1" step="0.0001" value="0.1" style="flex:1;">
                         <span id="val-sky-exposure" style="min-width:40px;">0.1000</span>
+                        <select id="sky-exposure-mode"
+                            style="width:52px; font-size:10px; padding:1px 2px; background:#222; color:#fff; border:1px solid #555; border-radius:3px;">
+                            <option value="constant">Const</option>
+                            <option value="random">Rand</option>
+                        </select>
                     </div>
+                    <div id="sky-exposure-rmin-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:55px;">
+                        <label style="width:30px; color:#888;">Min:</label>
+                        <input type="range" id="sky-exposure-rmin" min="0" max="1" step="0.0001" value="0"
+                            style="flex:1;">
+                    </div>
+                    <div id="sky-exposure-rmax-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:55px;">
+                        <label style="width:30px; color:#888;">Max:</label>
+                        <input type="range" id="sky-exposure-rmax" min="0" max="1" step="0.0001" value="1"
+                            style="flex:1;">
+                    </div>
+
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:50px;">Distort:</label>
                         <input type="range" id="water-distortion" min="0" max="8" step="0.1" value="3.7"
                             style="flex:1;">
                         <span id="val-water-distort" style="min-width:30px;">3.7</span>
+                        <select id="water-distortion-mode"
+                            style="width:52px; font-size:10px; padding:1px 2px; background:#222; color:#fff; border:1px solid #555; border-radius:3px;">
+                            <option value="constant">Const</option>
+                            <option value="random">Rand</option>
+                        </select>
                     </div>
+                    <div id="water-distortion-rmin-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:55px;">
+                        <label style="width:30px; color:#888;">Min:</label>
+                        <input type="range" id="water-distortion-rmin" min="0" max="8" step="0.1" value="0"
+                            style="flex:1;">
+                    </div>
+                    <div id="water-distortion-rmax-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:55px;">
+                        <label style="width:30px; color:#888;">Max:</label>
+                        <input type="range" id="water-distortion-rmax" min="0" max="8" step="0.1" value="8"
+                            style="flex:1;">
+                    </div>
+
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:50px;">Size:</label>
                         <input type="range" id="water-size" min="0.1" max="10" step="0.1" value="1.0" style="flex:1;">
                         <span id="val-water-size" style="min-width:30px;">1.0</span>
+                        <select id="water-size-mode"
+                            style="width:52px; font-size:10px; padding:1px 2px; background:#222; color:#fff; border:1px solid #555; border-radius:3px;">
+                            <option value="constant">Const</option>
+                            <option value="random">Rand</option>
+                        </select>
                     </div>
+                    <div id="water-size-rmin-row" style="display:none; gap:5px; align-items:center; padding-left:55px;">
+                        <label style="width:30px; color:#888;">Min:</label>
+                        <input type="range" id="water-size-rmin" min="0.1" max="10" step="0.1" value="0.1"
+                            style="flex:1;">
+                    </div>
+                    <div id="water-size-rmax-row" style="display:none; gap:5px; align-items:center; padding-left:55px;">
+                        <label style="width:30px; color:#888;">Max:</label>
+                        <input type="range" id="water-size-rmax" min="0.1" max="10" step="0.1" value="10"
+                            style="flex:1;">
+                    </div>
+
                     <div style="margin-top: 8px; color:#ccc; font-size:11px;">Clouds:</div>
+
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Coverage:</label>
                         <input type="range" id="cloud-coverage" min="0" max="1" step="0.01" value="0.4" style="flex:1;">
                         <span id="val-cloud-coverage" style="min-width:40px;">0.40</span>
+                        <select id="cloud-coverage-mode"
+                            style="width:52px; font-size:10px; padding:1px 2px; background:#222; color:#fff; border:1px solid #555; border-radius:3px;">
+                            <option value="constant">Const</option>
+                            <option value="random">Rand</option>
+                        </select>
                     </div>
+                    <div id="cloud-coverage-rmin-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:75px;">
+                        <label style="width:30px; color:#888;">Min:</label>
+                        <input type="range" id="cloud-coverage-rmin" min="0" max="1" step="0.01" value="0"
+                            style="flex:1;">
+                    </div>
+                    <div id="cloud-coverage-rmax-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:75px;">
+                        <label style="width:30px; color:#888;">Max:</label>
+                        <input type="range" id="cloud-coverage-rmax" min="0" max="1" step="0.01" value="1"
+                            style="flex:1;">
+                    </div>
+
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Density:</label>
                         <input type="range" id="cloud-density" min="0" max="1" step="0.01" value="0.5" style="flex:1;">
                         <span id="val-cloud-density" style="min-width:40px;">0.50</span>
+                        <select id="cloud-density-mode"
+                            style="width:52px; font-size:10px; padding:1px 2px; background:#222; color:#fff; border:1px solid #555; border-radius:3px;">
+                            <option value="constant">Const</option>
+                            <option value="random">Rand</option>
+                        </select>
                     </div>
+                    <div id="cloud-density-rmin-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:75px;">
+                        <label style="width:30px; color:#888;">Min:</label>
+                        <input type="range" id="cloud-density-rmin" min="0" max="1" step="0.01" value="0"
+                            style="flex:1;">
+                    </div>
+                    <div id="cloud-density-rmax-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:75px;">
+                        <label style="width:30px; color:#888;">Max:</label>
+                        <input type="range" id="cloud-density-rmax" min="0" max="1" step="0.01" value="1"
+                            style="flex:1;">
+                    </div>
+
                     <div style="display:flex; gap:5px; align-items:center;">
                         <label style="width:70px;">Elev:</label>
                         <input type="range" id="cloud-elevation" min="0" max="1" step="0.01" value="0.5"
                             style="flex:1;">
                         <span id="val-cloud-elevation" style="min-width:40px;">0.50</span>
+                        <select id="cloud-elevation-mode"
+                            style="width:52px; font-size:10px; padding:1px 2px; background:#222; color:#fff; border:1px solid #555; border-radius:3px;">
+                            <option value="constant">Const</option>
+                            <option value="random">Rand</option>
+                        </select>
                     </div>
+                    <div id="cloud-elevation-rmin-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:75px;">
+                        <label style="width:30px; color:#888;">Min:</label>
+                        <input type="range" id="cloud-elevation-rmin" min="0" max="1" step="0.01" value="0"
+                            style="flex:1;">
+                    </div>
+                    <div id="cloud-elevation-rmax-row"
+                        style="display:none; gap:5px; align-items:center; padding-left:75px;">
+                        <label style="width:30px; color:#888;">Max:</label>
+                        <input type="range" id="cloud-elevation-rmax" min="0" max="1" step="0.01" value="1"
+                            style="flex:1;">
+                    </div>
+
                     <button id="btn-toggle-ocean" style="background: #2b6777; margin-top: 5px;">Toggle Ocean:
                         ON</button>
                 </div>

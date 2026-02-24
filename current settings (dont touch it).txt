@@ -1,14 +1,59 @@
 {
   "ocean": {
-    "elevation": 2,
-    "azimuth": 180,
-    "worldRotation": 80.3,
-    "exposure": 0.1,
-    "cloudCoverage": 0.4,
-    "cloudDensity": 0.93,
-    "cloudElevation": 0.5,
-    "distortionScale": 3.7,
-    "size": 1,
+    "elevation": {
+      "mode": "random",
+      "value": 2,
+      "randomMin": 0,
+      "randomMax": 17.4
+    },
+    "azimuth": {
+      "mode": "random",
+      "value": 180,
+      "randomMin": -180,
+      "randomMax": 180
+    },
+    "worldRotation": {
+      "mode": "constant",
+      "value": 80.3,
+      "randomMin": -180,
+      "randomMax": -1.1
+    },
+    "exposure": {
+      "mode": "random",
+      "value": 0.0541,
+      "randomMin": 0,
+      "randomMax": 1
+    },
+    "cloudCoverage": {
+      "mode": "constant",
+      "value": 0.4,
+      "randomMin": 0,
+      "randomMax": 1
+    },
+    "cloudDensity": {
+      "mode": "constant",
+      "value": 0.93,
+      "randomMin": 0,
+      "randomMax": 1
+    },
+    "cloudElevation": {
+      "mode": "constant",
+      "value": 0.5,
+      "randomMin": 0,
+      "randomMax": 1
+    },
+    "distortionScale": {
+      "mode": "random",
+      "value": 3.7,
+      "randomMin": 0,
+      "randomMax": 8
+    },
+    "size": {
+      "mode": "random",
+      "value": 1,
+      "randomMin": 1.7,
+      "randomMax": 10
+    },
     "oceanVisible": true
   },
   "physics": {
@@ -98,10 +143,35 @@
     "glowIntensity": 0.55,
     "pulseScale": 1.7
   },
+  "loading": {
+    "bgEnabled": true,
+    "bgOpacity": 1,
+    "bgScale": "cover",
+    "bgPosition": "center",
+    "bgBlur": 0,
+    "overlayOpacity": 0.5,
+    "overlayColor": "#000000"
+  },
   "cameraControls": {
     "disabled": true
   },
   "fpsOverlay": {
     "enabled": true
-  }
+  },
+  "zaneAtega": {
+    "lightTint": "#ff3d3d",
+    "rimTint": "#c27070",
+    "ambientTint": "#fe9a58",
+    "shadowTint": "#fed7d7",
+    "tintStrength": 0.7,
+    "glossiness": 25.5,
+    "counterExposure": 0.55,
+    "saturation": 1.25,
+    "hairSaturation": 1.29,
+    "outlineThickness": 0.001,
+    "outlineBurnIntensity": 1,
+    "outlineLightInfluence": 0.5,
+    "outlineMaxBrightness": 1
+  },
+  "shaderMode": "toon"
 }

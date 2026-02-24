@@ -8,6 +8,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { Water } from 'three/addons/objects/Water.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { createToonMaterial, createStepTexture } from './shaders/ToonShader.js';
+import { createZaneAtegaMaterial } from './shaders/ZaneAtegaShader.js';
 import { WaterRippleShader } from './shaders/WaterRippleShader.js';
 
 let scene, camera, renderer, composer, mixer, clock;
@@ -93,20 +94,49 @@ let pmremGenerator;
 let renderTargetEnv;
 let envScene;
 let oceanVisible = true;
-const oceanParams = {
-    elevation: 2,
-    azimuth: 180,
-    worldRotation: 0,
-    exposure: 0.1,
-    cloudCoverage: 0.4,
-    cloudDensity: 0.5,
-    cloudElevation: 0.5,
-    distortionScale: 3.7,
-    size: 1.0
+
+// Structured ocean params: each key has { mode, value, randomMin, randomMax }
+const _oceanParamDefs = {
+    elevation: { min: 0, max: 90, step: 0.1, defVal: 2 },
+    azimuth: { min: -180, max: 180, step: 0.1, defVal: 180 },
+    worldRotation: { min: -180, max: 180, step: 0.1, defVal: 0 },
+    exposure: { min: 0, max: 1, step: 0.0001, defVal: 0.1 },
+    cloudCoverage: { min: 0, max: 1, step: 0.01, defVal: 0.4 },
+    cloudDensity: { min: 0, max: 1, step: 0.01, defVal: 0.5 },
+    cloudElevation: { min: 0, max: 1, step: 0.01, defVal: 0.5 },
+    distortionScale: { min: 0, max: 8, step: 0.1, defVal: 3.7 },
+    size: { min: 0.1, max: 10, step: 0.1, defVal: 1.0 },
 };
 
+const oceanParams = {};
+for (const [key, def] of Object.entries(_oceanParamDefs)) {
+    oceanParams[key] = {
+        mode: 'constant',       // 'constant' or 'random'
+        value: def.defVal,      // used when mode === 'constant'
+        randomMin: def.min,     // used when mode === 'random'
+        randomMax: def.max,     // used when mode === 'random'
+        _active: def.defVal     // the currently active (effective) value
+    };
+}
+
+/** Get the effective active value of an ocean param */
+function _oceanVal(key) {
+    return oceanParams[key]._active;
+}
+
+/** Randomize all ocean params that are in 'random' mode */
+function _randomizeOceanParams() {
+    for (const [key, p] of Object.entries(oceanParams)) {
+        if (p.mode === 'random') {
+            p._active = p.randomMin + Math.random() * (p.randomMax - p.randomMin);
+        } else {
+            p._active = p.value;
+        }
+    }
+}
+
 // Used to compensate ambient/fill so exposure changes don't lift character shadows.
-const _EXPOSURE_BASELINE = oceanParams.exposure;
+const _EXPOSURE_BASELINE = oceanParams.exposure._active;
 
 // --- Hair Physics Globals ---
 let physicsChains = []; // Array of verlet chains
@@ -161,7 +191,7 @@ const _toonAmbientColor = new THREE.Color(0.25, 0.25, 0.25);
 
 function _updateToonLightColorsFromSun() {
     // Warm at low elevation, cooler/whiter as the sun rises.
-    const elev = oceanParams?.elevation ?? 2;
+    const elev = _oceanVal('elevation') ?? 2;
     const t = THREE.MathUtils.clamp(1.0 - elev / 25.0, 0.0, 1.0);
     const warm = new THREE.Color(1.0, 0.62, 0.32);
     const cool = new THREE.Color(0.78, 0.88, 1.0);
@@ -207,7 +237,7 @@ function _applyExposureShadowCompensation() {
     // Exposure is global (renderer-level). To avoid exposure lifting character shadows,
     // we counter-scale the *fill* sources (hemisphere + env reflections) so the fill
     // contribution stays roughly constant as exposure changes.
-    const exposure = Math.max(0.0001, oceanParams.exposure);
+    const exposure = Math.max(0.0001, _oceanVal('exposure'));
     const baseline = Math.max(0.0001, _EXPOSURE_BASELINE);
     const comp = THREE.MathUtils.clamp(baseline / exposure, 0.0, 20.0);
 
@@ -403,18 +433,14 @@ async function _startupLoadSettingsAndUiLock() {
 // --- Copy/Paste Integration ---
 function getAllSettings() {
     return {
-        ocean: {
-            elevation: oceanParams.elevation,
-            azimuth: oceanParams.azimuth,
-            worldRotation: oceanParams.worldRotation,
-            exposure: oceanParams.exposure,
-            cloudCoverage: oceanParams.cloudCoverage,
-            cloudDensity: oceanParams.cloudDensity,
-            cloudElevation: oceanParams.cloudElevation,
-            distortionScale: oceanParams.distortionScale,
-            size: oceanParams.size,
-            oceanVisible
-        },
+        ocean: (() => {
+            const o = {};
+            for (const [key, p] of Object.entries(oceanParams)) {
+                o[key] = { mode: p.mode, value: p.value, randomMin: p.randomMin, randomMax: p.randomMax };
+            }
+            o.oceanVisible = oceanVisible;
+            return o;
+        })(),
         physics: hairPhysicsSettings,
         toon: toonSettings,
         toonLighting: toonLightingSettings,
@@ -467,7 +493,9 @@ function getAllSettings() {
         },
         fpsOverlay: {
             enabled: !!fpsOverlaySettings.enabled
-        }
+        },
+        zaneAtega: { ...zaneAtegaSettings },
+        shaderMode: shaderMode
     };
 }
 
@@ -657,28 +685,28 @@ function applyAllSettings(data) {
     }
 
     if (data.ocean) {
-        Object.assign(oceanParams, data.ocean);
         if (typeof data.ocean.oceanVisible === 'boolean') oceanVisible = data.ocean.oceanVisible;
+        // Merge structured params (with old-format migration)
+        for (const key of Object.keys(oceanParams)) {
+            const incoming = data.ocean[key];
+            if (incoming == null) continue;
+            if (typeof incoming === 'object' && incoming.mode) {
+                // New structured format
+                oceanParams[key].mode = incoming.mode;
+                if (typeof incoming.value === 'number') oceanParams[key].value = incoming.value;
+                if (typeof incoming.randomMin === 'number') oceanParams[key].randomMin = incoming.randomMin;
+                if (typeof incoming.randomMax === 'number') oceanParams[key].randomMax = incoming.randomMax;
+            } else if (typeof incoming === 'number') {
+                // Old flat format — migrate
+                oceanParams[key].value = incoming;
+                oceanParams[key].mode = 'constant';
+            }
+            // Refresh _active
+            oceanParams[key]._active = oceanParams[key].mode === 'constant' ? oceanParams[key].value : oceanParams[key]._active;
+        }
 
-        const elevEl = document.getElementById('sky-elevation');
-        const azEl = document.getElementById('sky-azimuth');
-        const rotEl = document.getElementById('beach-rotation');
-        const expEl = document.getElementById('sky-exposure');
-        const covEl = document.getElementById('cloud-coverage');
-        const denEl = document.getElementById('cloud-density');
-        const celEl = document.getElementById('cloud-elevation');
-        const distEl = document.getElementById('water-distortion');
-        const sizeEl = document.getElementById('water-size');
-
-        if (elevEl) { elevEl.value = String(oceanParams.elevation); elevEl.dispatchEvent(new Event('input')); }
-        if (azEl) { azEl.value = String(oceanParams.azimuth); azEl.dispatchEvent(new Event('input')); }
-        if (rotEl) { rotEl.value = String(oceanParams.worldRotation); rotEl.dispatchEvent(new Event('input')); }
-        if (expEl) { expEl.value = String(oceanParams.exposure); expEl.dispatchEvent(new Event('input')); }
-        if (covEl) { covEl.value = String(oceanParams.cloudCoverage); covEl.dispatchEvent(new Event('input')); }
-        if (denEl) { denEl.value = String(oceanParams.cloudDensity); denEl.dispatchEvent(new Event('input')); }
-        if (celEl) { celEl.value = String(oceanParams.cloudElevation); celEl.dispatchEvent(new Event('input')); }
-        if (distEl) { distEl.value = String(oceanParams.distortionScale); distEl.dispatchEvent(new Event('input')); }
-        if (sizeEl) { sizeEl.value = String(oceanParams.size); sizeEl.dispatchEvent(new Event('input')); }
+        // Sync UI for each param (safe: may be called before init binds UI)
+        if (typeof window._syncAllOceanUI === 'function') window._syncAllOceanUI();
 
         // Ensure visibility state is restored.
         if (water) water.visible = oceanVisible;
@@ -697,6 +725,20 @@ function applyAllSettings(data) {
             if (renderTargetEnv) scene.environment = renderTargetEnv.texture;
         } else {
             scene.environment = null;
+        }
+
+        // Apply values to the actual scene
+        updateSunPosition();
+        if (renderer) renderer.toneMappingExposure = _oceanVal('exposure');
+        if (water) {
+            water.material.uniforms['distortionScale'].value = _oceanVal('distortionScale');
+            water.material.uniforms['size'].value = _oceanVal('size');
+        }
+        if (sky && sky.material && sky.material.uniforms) {
+            const su = sky.material.uniforms;
+            if (su['cloudCoverage']) su['cloudCoverage'].value = _oceanVal('cloudCoverage');
+            if (su['cloudDensity']) su['cloudDensity'].value = _oceanVal('cloudDensity');
+            if (su['cloudElevation']) su['cloudElevation'].value = _oceanVal('cloudElevation');
         }
 
         // Keep shadow compensation in sync.
@@ -808,7 +850,64 @@ function applyAllSettings(data) {
         const cSel = document.getElementById('camera-anim-selector');
         if (aSel && data.animation.arona) aSel.value = data.animation.arona;
         if (cSel && data.animation.camera) cSel.value = data.animation.camera;
-        // Optional: auto-play? The user might just want settings restored.
+    }
+
+    // 4. ZaneAtega Settings
+    if (data.zaneAtega) {
+        Object.assign(zaneAtegaSettings, data.zaneAtega);
+        _applyZaneAtegaUniforms();
+        // Sync UI sliders / pickers
+        const zaIds = {
+            'za-light-tint': zaneAtegaSettings.lightTint,
+            'za-rim-tint': zaneAtegaSettings.rimTint,
+            'za-ambient-tint': zaneAtegaSettings.ambientTint,
+            'za-shadow-tint': zaneAtegaSettings.shadowTint,
+        };
+        for (const [id, val] of Object.entries(zaIds)) {
+            const el = document.getElementById(id);
+            if (el) { el.value = val; }
+        }
+        const zaSliders = {
+            'za-tint-strength': zaneAtegaSettings.tintStrength,
+            'za-glossiness': zaneAtegaSettings.glossiness,
+            'za-counter-exposure': zaneAtegaSettings.counterExposure,
+            'za-saturation': zaneAtegaSettings.saturation,
+            'za-hair-saturation': zaneAtegaSettings.hairSaturation,
+            'za-outline-thickness': zaneAtegaSettings.outlineThickness,
+            'za-outline-burn': zaneAtegaSettings.outlineBurnIntensity,
+            'za-outline-light': zaneAtegaSettings.outlineLightInfluence,
+            'za-outline-max-bright': zaneAtegaSettings.outlineMaxBrightness,
+        };
+        for (const [id, val] of Object.entries(zaSliders)) {
+            const el = document.getElementById(id);
+            if (el) { el.value = String(val); el.dispatchEvent(new Event('input')); }
+        }
+    }
+
+    // 5. Shader Mode
+    if (data.shaderMode && ['toon', 'basic', 'zaneatega'].includes(data.shaderMode)) {
+        shaderMode = data.shaderMode;
+        materialBindings.forEach((binding) => {
+            if (shaderMode === 'toon') {
+                binding.mesh.material = binding.toonMaterial;
+                if (binding.outlineMesh) binding.outlineMesh.visible = true;
+                if (binding.zaOutlineMesh) binding.zaOutlineMesh.visible = false;
+            } else if (shaderMode === 'basic') {
+                binding.mesh.material = binding.litMaterial;
+                if (binding.outlineMesh) binding.outlineMesh.visible = false;
+                if (binding.zaOutlineMesh) binding.zaOutlineMesh.visible = false;
+            } else {
+                binding.mesh.material = binding.zaneAtegaMaterial;
+                if (binding.outlineMesh) binding.outlineMesh.visible = false;
+                if (binding.zaOutlineMesh) binding.zaOutlineMesh.visible = true;
+            }
+        });
+        const toggleShaderBtn = document.getElementById('btn-toggle-shader');
+        if (toggleShaderBtn) {
+            const labels = { toon: 'Shader: Toon', basic: 'Shader: Basic', zaneatega: 'Shader: ZaneAtega' };
+            toggleShaderBtn.textContent = labels[shaderMode];
+            toggleShaderBtn.classList.toggle('active', shaderMode !== 'basic');
+        }
     }
 }
 
@@ -852,9 +951,51 @@ function updateChainsListUI() {
 
 // Shared toon materials list for two-pass rendering
 const toonMaterials = [];
+const zaneAtegaMaterials = [];
 const sharedLightDirection = new THREE.Vector3(0, -1, -1).normalize();
 const materialBindings = [];
-let useToonShader = true;
+// shaderMode cycles: 'toon' -> 'basic' -> 'zaneatega' -> 'toon'
+let shaderMode = 'toon';
+
+// --- ZaneAtega Settings ---
+const zaneAtegaSettings = {
+    lightTint: '#ffffff',
+    rimTint: '#ffffff',
+    ambientTint: '#ffffff',
+    shadowTint: '#ffffff',
+    tintStrength: 1.0,
+    glossiness: 10.0,
+    counterExposure: 1.0,
+    saturation: 1.0,
+    hairSaturation: 1.0,
+    outlineThickness: 0.003,
+    outlineBurnIntensity: 1.0,
+    outlineLightInfluence: 0.5,
+    outlineMaxBrightness: 1.0,
+};
+
+function _applyZaneAtegaUniforms() {
+    const lt = new THREE.Color(zaneAtegaSettings.lightTint);
+    const rt = new THREE.Color(zaneAtegaSettings.rimTint);
+    const at = new THREE.Color(zaneAtegaSettings.ambientTint);
+    const st = new THREE.Color(zaneAtegaSettings.shadowTint);
+    zaneAtegaMaterials.forEach(m => {
+        if (!m || !m.uniforms) return;
+        m.uniforms.lightTint.value.copy(lt);
+        m.uniforms.rimTint.value.copy(rt);
+        m.uniforms.ambientTint.value.copy(at);
+        m.uniforms.shadowTint.value.copy(st);
+        m.uniforms.tintStrength.value = zaneAtegaSettings.tintStrength;
+        m.uniforms.glossiness.value = zaneAtegaSettings.glossiness;
+        m.uniforms.counterExposure.value = zaneAtegaSettings.counterExposure;
+        m.uniforms.saturation.value = zaneAtegaSettings.saturation;
+        m.uniforms.hairSaturation.value = zaneAtegaSettings.hairSaturation;
+        m.uniforms.outlineThickness.value = zaneAtegaSettings.outlineThickness;
+        m.uniforms.outlineBurnIntensity.value = zaneAtegaSettings.outlineBurnIntensity;
+        m.uniforms.outlineLightInfluence.value = zaneAtegaSettings.outlineLightInfluence;
+        m.uniforms.outlineMaxBrightness.value = zaneAtegaSettings.outlineMaxBrightness;
+    });
+}
 let lightsOn = true;
 
 // Camera control variables
@@ -1479,29 +1620,7 @@ function init() {
         });
     }
 
-    // Ocean UI Elements
-    const skyElevation = document.getElementById('sky-elevation');
-    const skyAzimuth = document.getElementById('sky-azimuth');
-    const valSkyElevation = document.getElementById('val-sky-elevation');
-    const valSkyAzimuth = document.getElementById('val-sky-azimuth');
 
-    const beachRotation = document.getElementById('beach-rotation');
-    const valBeachRotation = document.getElementById('val-beach-rotation');
-
-    const skyExposure = document.getElementById('sky-exposure');
-    const valSkyExposure = document.getElementById('val-sky-exposure');
-
-    const cloudCoverage = document.getElementById('cloud-coverage');
-    const cloudDensity = document.getElementById('cloud-density');
-    const cloudElevation = document.getElementById('cloud-elevation');
-    const valCloudCoverage = document.getElementById('val-cloud-coverage');
-    const valCloudDensity = document.getElementById('val-cloud-density');
-    const valCloudElevation = document.getElementById('val-cloud-elevation');
-
-    const waterDistortion = document.getElementById('water-distortion');
-    const waterSize = document.getElementById('water-size');
-    const valWaterDistort = document.getElementById('val-water-distort');
-    const valWaterSize = document.getElementById('val-water-size');
     const btnToggleOcean = document.getElementById('btn-toggle-ocean');
 
     // Outline UI Elements
@@ -1653,88 +1772,228 @@ function init() {
         });
     }
 
-    // --- Bind Ocean UI ---
-    if (skyElevation) {
-        if (valSkyElevation) valSkyElevation.textContent = Number(oceanParams.elevation).toFixed(1);
-        skyElevation.addEventListener('input', (e) => {
-            oceanParams.elevation = parseFloat(e.target.value);
-            if (valSkyElevation) valSkyElevation.textContent = oceanParams.elevation.toFixed(1);
-            updateSunPosition();
-        });
-    }
-    if (skyAzimuth) {
-        if (valSkyAzimuth) valSkyAzimuth.textContent = Number(oceanParams.azimuth).toFixed(1);
-        skyAzimuth.addEventListener('input', (e) => {
-            oceanParams.azimuth = parseFloat(e.target.value);
-            if (valSkyAzimuth) valSkyAzimuth.textContent = oceanParams.azimuth.toFixed(1);
-            updateSunPosition();
-        });
-    }
-
-    if (beachRotation) {
-        if (valBeachRotation) valBeachRotation.textContent = Number(oceanParams.worldRotation).toFixed(1);
-        beachRotation.addEventListener('input', (e) => {
-            oceanParams.worldRotation = parseFloat(e.target.value);
-            if (valBeachRotation) valBeachRotation.textContent = oceanParams.worldRotation.toFixed(1);
-            updateSunPosition();
-        });
+    // --- Bind ZaneAtega UI ---
+    const _zaColorMap = {
+        'za-light-tint': 'lightTint',
+        'za-rim-tint': 'rimTint',
+        'za-ambient-tint': 'ambientTint',
+        'za-shadow-tint': 'shadowTint',
+    };
+    for (const [id, key] of Object.entries(_zaColorMap)) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.value = zaneAtegaSettings[key];
+            el.addEventListener('input', (e) => {
+                zaneAtegaSettings[key] = e.target.value;
+                _applyZaneAtegaUniforms();
+            });
+        }
     }
 
-    if (skyExposure) {
-        if (valSkyExposure) valSkyExposure.textContent = Number(oceanParams.exposure).toFixed(4);
-        skyExposure.addEventListener('input', (e) => {
-            oceanParams.exposure = parseFloat(e.target.value);
-            if (valSkyExposure) valSkyExposure.textContent = oceanParams.exposure.toFixed(4);
-            if (renderer) renderer.toneMappingExposure = oceanParams.exposure;
-            _applyExposureShadowCompensation();
-        });
+    const _zaSliderMap = {
+        'za-tint-strength': { key: 'tintStrength', fmt: 2 },
+        'za-glossiness': { key: 'glossiness', fmt: 1 },
+        'za-counter-exposure': { key: 'counterExposure', fmt: 2 },
+        'za-saturation': { key: 'saturation', fmt: 2 },
+        'za-hair-saturation': { key: 'hairSaturation', fmt: 2 },
+        'za-outline-thickness': { key: 'outlineThickness', fmt: 4 },
+        'za-outline-burn': { key: 'outlineBurnIntensity', fmt: 2 },
+        'za-outline-light': { key: 'outlineLightInfluence', fmt: 2 },
+        'za-outline-max-bright': { key: 'outlineMaxBrightness', fmt: 2 },
+    };
+    for (const [id, { key, fmt }] of Object.entries(_zaSliderMap)) {
+        const el = document.getElementById(id);
+        const valEl = document.getElementById('val-' + id);
+        if (el) {
+            el.value = String(zaneAtegaSettings[key]);
+            if (valEl) valEl.textContent = Number(zaneAtegaSettings[key]).toFixed(fmt);
+            el.addEventListener('input', (e) => {
+                zaneAtegaSettings[key] = parseFloat(e.target.value);
+                if (valEl) valEl.textContent = zaneAtegaSettings[key].toFixed(fmt);
+                _applyZaneAtegaUniforms();
+            });
+        }
     }
 
-    const syncCloudUniform = (uniformName, value) => {
-        if (!sky || !sky.material || !sky.material.uniforms) return;
-        const u = sky.material.uniforms[uniformName];
-        if (u && typeof u.value === 'number') u.value = value;
+    // --- Bind Ocean UI (dynamic: mode dropdown + dual sliders per param) ---
+    const _oceanUIMap = {
+        elevation: { slider: 'sky-elevation', val: 'val-sky-elevation', decimals: 1 },
+        azimuth: { slider: 'sky-azimuth', val: 'val-sky-azimuth', decimals: 1 },
+        worldRotation: { slider: 'beach-rotation', val: 'val-beach-rotation', decimals: 1 },
+        exposure: { slider: 'sky-exposure', val: 'val-sky-exposure', decimals: 4 },
+        distortionScale: { slider: 'water-distortion', val: 'val-water-distort', decimals: 1 },
+        size: { slider: 'water-size', val: 'val-water-size', decimals: 1 },
+        cloudCoverage: { slider: 'cloud-coverage', val: 'val-cloud-coverage', decimals: 2 },
+        cloudDensity: { slider: 'cloud-density', val: 'val-cloud-density', decimals: 2 },
+        cloudElevation: { slider: 'cloud-elevation', val: 'val-cloud-elevation', decimals: 2 },
     };
 
-    if (cloudCoverage) {
-        if (valCloudCoverage) valCloudCoverage.textContent = Number(oceanParams.cloudCoverage).toFixed(2);
-        cloudCoverage.addEventListener('input', (e) => {
-            oceanParams.cloudCoverage = parseFloat(e.target.value);
-            if (valCloudCoverage) valCloudCoverage.textContent = oceanParams.cloudCoverage.toFixed(2);
-            syncCloudUniform('cloudCoverage', oceanParams.cloudCoverage);
-        });
+    const _applyOceanParamToScene = (key) => {
+        const v = oceanParams[key]._active;
+        switch (key) {
+            case 'elevation':
+            case 'azimuth':
+            case 'worldRotation':
+                updateSunPosition();
+                break;
+            case 'exposure':
+                if (renderer) renderer.toneMappingExposure = v;
+                _applyExposureShadowCompensation();
+                break;
+            case 'distortionScale':
+                if (water) water.material.uniforms['distortionScale'].value = v;
+                break;
+            case 'size':
+                if (water) water.material.uniforms['size'].value = v;
+                break;
+            case 'cloudCoverage':
+            case 'cloudDensity':
+            case 'cloudElevation':
+                if (sky && sky.material && sky.material.uniforms) {
+                    const u = sky.material.uniforms[key];
+                    if (u && typeof u.value === 'number') u.value = v;
+                }
+                break;
+        }
+    };
+
+    // Bind each ocean param UI
+    for (const [key, ui] of Object.entries(_oceanUIMap)) {
+        const slider = document.getElementById(ui.slider);       // preview/constant slider
+        const valSpan = document.getElementById(ui.val);
+        const modeSelect = document.getElementById(ui.slider + '-mode');
+        const rminSlider = document.getElementById(ui.slider + '-rmin');
+        const rminRow = document.getElementById(ui.slider + '-rmin-row');
+        const rmaxSlider = document.getElementById(ui.slider + '-rmax');
+        const rmaxRow = document.getElementById(ui.slider + '-rmax-row');
+
+        const p = oceanParams[key];
+        const def = _oceanParamDefs[key];
+
+        // Helper: clamp preview slider to [randomMin, randomMax]
+        const clampPreview = () => {
+            if (!slider || p.mode !== 'random') return;
+            const lo = Math.min(p.randomMin, p.randomMax);
+            const hi = Math.max(p.randomMin, p.randomMax);
+            slider.min = lo;
+            slider.max = hi;
+            // Clamp _active
+            p._active = Math.max(lo, Math.min(hi, p._active));
+            slider.value = String(p._active);
+            if (valSpan) valSpan.textContent = p._active.toFixed(ui.decimals);
+        };
+
+        // Helper: reset preview slider range to full param range
+        const resetPreviewRange = () => {
+            if (!slider) return;
+            slider.min = def.min;
+            slider.max = def.max;
+        };
+
+        // Init slider
+        if (slider) {
+            if (p.mode === 'constant') {
+                resetPreviewRange();
+                slider.value = String(p.value);
+            } else {
+                clampPreview();
+            }
+            if (valSpan) valSpan.textContent = Number(p._active).toFixed(ui.decimals);
+
+            slider.addEventListener('input', () => {
+                const v = parseFloat(slider.value);
+                if (p.mode === 'constant') {
+                    p.value = v;
+                }
+                p._active = v;
+                if (valSpan) valSpan.textContent = p._active.toFixed(ui.decimals);
+                _applyOceanParamToScene(key);
+            });
+        }
+
+        // Init rmin slider
+        if (rminSlider) {
+            rminSlider.value = String(p.randomMin);
+            rminSlider.addEventListener('input', () => {
+                p.randomMin = parseFloat(rminSlider.value);
+                clampPreview();
+                _applyOceanParamToScene(key);
+            });
+        }
+
+        // Init rmax slider
+        if (rmaxSlider) {
+            rmaxSlider.value = String(p.randomMax);
+            rmaxSlider.addEventListener('input', () => {
+                p.randomMax = parseFloat(rmaxSlider.value);
+                clampPreview();
+                _applyOceanParamToScene(key);
+            });
+        }
+
+        // Init mode dropdown
+        if (modeSelect) {
+            modeSelect.value = p.mode;
+            const showRandom = p.mode === 'random';
+            if (rminRow) rminRow.style.display = showRandom ? 'flex' : 'none';
+            if (rmaxRow) rmaxRow.style.display = showRandom ? 'flex' : 'none';
+
+            modeSelect.addEventListener('change', () => {
+                p.mode = modeSelect.value;
+                const isRandom = p.mode === 'random';
+                if (rminRow) rminRow.style.display = isRandom ? 'flex' : 'none';
+                if (rmaxRow) rmaxRow.style.display = isRandom ? 'flex' : 'none';
+                if (isRandom) {
+                    // Keep _active at current value, clamp preview
+                    clampPreview();
+                } else {
+                    // Restore full range and set to constant value
+                    resetPreviewRange();
+                    p._active = p.value;
+                    if (slider) slider.value = String(p.value);
+                }
+                if (valSpan) valSpan.textContent = p._active.toFixed(ui.decimals);
+                _applyOceanParamToScene(key);
+            });
+        }
     }
 
-    if (cloudDensity) {
-        if (valCloudDensity) valCloudDensity.textContent = Number(oceanParams.cloudDensity).toFixed(2);
-        cloudDensity.addEventListener('input', (e) => {
-            oceanParams.cloudDensity = parseFloat(e.target.value);
-            if (valCloudDensity) valCloudDensity.textContent = oceanParams.cloudDensity.toFixed(2);
-            syncCloudUniform('cloudDensity', oceanParams.cloudDensity);
-        });
-    }
+    // Helper to sync all ocean UI from oceanParams state
+    window._syncAllOceanUI = _syncAllOceanUI;
+    function _syncAllOceanUI() {
+        for (const [key, ui] of Object.entries(_oceanUIMap)) {
+            const slider = document.getElementById(ui.slider);
+            const valSpan = document.getElementById(ui.val);
+            const modeSelect = document.getElementById(ui.slider + '-mode');
+            const rminSlider = document.getElementById(ui.slider + '-rmin');
+            const rminRow = document.getElementById(ui.slider + '-rmin-row');
+            const rmaxSlider = document.getElementById(ui.slider + '-rmax');
+            const rmaxRow = document.getElementById(ui.slider + '-rmax-row');
+            const p = oceanParams[key];
+            const def = _oceanParamDefs[key];
+            const isRandom = p.mode === 'random';
 
-    if (cloudElevation) {
-        if (valCloudElevation) valCloudElevation.textContent = Number(oceanParams.cloudElevation).toFixed(2);
-        cloudElevation.addEventListener('input', (e) => {
-            oceanParams.cloudElevation = parseFloat(e.target.value);
-            if (valCloudElevation) valCloudElevation.textContent = oceanParams.cloudElevation.toFixed(2);
-            syncCloudUniform('cloudElevation', oceanParams.cloudElevation);
-        });
-    }
-    if (waterDistortion) {
-        waterDistortion.addEventListener('input', (e) => {
-            oceanParams.distortionScale = parseFloat(e.target.value);
-            if (valWaterDistort) valWaterDistort.textContent = oceanParams.distortionScale.toFixed(1);
-            if (water) water.material.uniforms['distortionScale'].value = oceanParams.distortionScale;
-        });
-    }
-    if (waterSize) {
-        waterSize.addEventListener('input', (e) => {
-            oceanParams.size = parseFloat(e.target.value);
-            if (valWaterSize) valWaterSize.textContent = oceanParams.size.toFixed(1);
-            if (water) water.material.uniforms['size'].value = oceanParams.size;
-        });
+            if (rminSlider) rminSlider.value = String(p.randomMin);
+            if (rmaxSlider) rmaxSlider.value = String(p.randomMax);
+            if (modeSelect) modeSelect.value = p.mode;
+            if (rminRow) rminRow.style.display = isRandom ? 'flex' : 'none';
+            if (rmaxRow) rmaxRow.style.display = isRandom ? 'flex' : 'none';
+
+            if (slider) {
+                if (isRandom) {
+                    const lo = Math.min(p.randomMin, p.randomMax);
+                    const hi = Math.max(p.randomMin, p.randomMax);
+                    slider.min = lo;
+                    slider.max = hi;
+                    slider.value = String(p._active);
+                } else {
+                    slider.min = def.min;
+                    slider.max = def.max;
+                    slider.value = String(p.value);
+                }
+            }
+            if (valSpan) valSpan.textContent = p._active.toFixed(ui.decimals);
+        }
     }
     if (btnToggleOcean) {
         btnToggleOcean.addEventListener('click', () => {
@@ -2159,7 +2418,7 @@ function init() {
     renderer.debug.checkShaderErrors = true;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = oceanParams.exposure;
+    renderer.toneMappingExposure = _oceanVal('exposure');
     renderer.autoClear = false; // We manually clear between toon passes
     container.appendChild(renderer.domElement);
 
@@ -2183,8 +2442,8 @@ function init() {
             sunDirection: new THREE.Vector3(),
             sunColor: 0xffffff,
             waterColor: 0x001e0f,
-            distortionScale: oceanParams.distortionScale,
-            size: oceanParams.size,
+            distortionScale: _oceanVal('distortionScale'),
+            size: _oceanVal('size'),
             fog: scene.fog !== undefined
         }
     );
@@ -2205,9 +2464,9 @@ function init() {
     skyUniforms['mieDirectionalG'].value = 0.8;
 
     // Beach sky (ONLYWATER) supports optional cloud uniforms.
-    if (skyUniforms['cloudCoverage']) skyUniforms['cloudCoverage'].value = oceanParams.cloudCoverage;
-    if (skyUniforms['cloudDensity']) skyUniforms['cloudDensity'].value = oceanParams.cloudDensity;
-    if (skyUniforms['cloudElevation']) skyUniforms['cloudElevation'].value = oceanParams.cloudElevation;
+    if (skyUniforms['cloudCoverage']) skyUniforms['cloudCoverage'].value = _oceanVal('cloudCoverage');
+    if (skyUniforms['cloudDensity']) skyUniforms['cloudDensity'].value = _oceanVal('cloudDensity');
+    if (skyUniforms['cloudElevation']) skyUniforms['cloudElevation'].value = _oceanVal('cloudElevation');
 
     updateSunPosition();
 
@@ -2222,6 +2481,7 @@ function init() {
     const dirLight = new THREE.DirectionalLight(0xffffff, 2);
     dirLight.position.set(0, 20, 10);
     scene.add(dirLight);
+    window.dirLight = dirLight;
 
     _applyExposureShadowCompensation();
 
@@ -2257,6 +2517,22 @@ function init() {
                         const fpsDiv = document.getElementById('fps-overlay');
                         if (fpsDiv && fpsOverlaySettings.enabled) {
                             fpsDiv.style.display = 'block';
+                        }
+
+                        // Randomize ocean params and apply
+                        _randomizeOceanParams();
+                        if (typeof window._syncAllOceanUI === 'function') window._syncAllOceanUI();
+                        updateSunPosition();
+                        if (renderer) renderer.toneMappingExposure = _oceanVal('exposure');
+                        if (water) {
+                            water.material.uniforms['distortionScale'].value = _oceanVal('distortionScale');
+                            water.material.uniforms['size'].value = _oceanVal('size');
+                        }
+                        if (sky && sky.material && sky.material.uniforms) {
+                            const su = sky.material.uniforms;
+                            if (su['cloudCoverage']) su['cloudCoverage'].value = _oceanVal('cloudCoverage');
+                            if (su['cloudDensity']) su['cloudDensity'].value = _oceanVal('cloudDensity');
+                            if (su['cloudElevation']) su['cloudElevation'].value = _oceanVal('cloudElevation');
                         }
 
                         // Now safe to start audio/animations
@@ -2430,7 +2706,57 @@ function init() {
 
                 toonMaterials.push(toonMat);
                 toonMaterials.push(toonOutlineMat);
-                return { toonMat, toonOutlineMat, litMat };
+
+                // --- ZaneAtega material for this slot ---
+                const zaIsHair = name.includes('hair');
+                const zaIsFace = name.includes('face');
+                const zaIsEye = name.includes('eyes');
+                const zaMat = createZaneAtegaMaterial(colorTex, {
+                    isEye: zaIsEye,
+                    isFace: zaIsFace,
+                    isHair: zaIsHair,
+                    skinning: child.isSkinnedMesh,
+                    transparent,
+                    alphaTest,
+                    lightTint: new THREE.Color(zaneAtegaSettings.lightTint),
+                    rimTint: new THREE.Color(zaneAtegaSettings.rimTint),
+                    ambientTint: new THREE.Color(zaneAtegaSettings.ambientTint),
+                    shadowTint: new THREE.Color(zaneAtegaSettings.shadowTint),
+                    tintStrength: zaneAtegaSettings.tintStrength,
+                    glossiness: zaneAtegaSettings.glossiness,
+                    counterExposure: zaneAtegaSettings.counterExposure,
+                    saturation: zaneAtegaSettings.saturation,
+                    hairSaturation: zaneAtegaSettings.hairSaturation,
+                    outlineThickness: zaneAtegaSettings.outlineThickness,
+                    outlineBurnIntensity: zaneAtegaSettings.outlineBurnIntensity,
+                    outlineLightInfluence: zaneAtegaSettings.outlineLightInfluence,
+                    outlineMaxBrightness: zaneAtegaSettings.outlineMaxBrightness,
+                });
+                const zaOutlineMat = zaMat.clone();
+                zaOutlineMat.uniforms = THREE.UniformsUtils.merge([
+                    THREE.UniformsLib.lights,
+                    {},
+                ]);
+                // Copy all uniform values from zaMat
+                for (const key of Object.keys(zaMat.uniforms)) {
+                    if (zaOutlineMat.uniforms[key]) {
+                        zaOutlineMat.uniforms[key].value = zaMat.uniforms[key].value;
+                    } else {
+                        zaOutlineMat.uniforms[key] = { value: zaMat.uniforms[key].value };
+                    }
+                }
+                zaOutlineMat.uniforms.isOutline.value = true;
+                zaOutlineMat.side = THREE.BackSide;
+                zaOutlineMat.depthWrite = false;
+                zaOutlineMat.lights = true;
+
+                zaMat.uniforms.isOutline.value = false;
+                zaMat.side = transparent ? THREE.DoubleSide : THREE.FrontSide;
+
+                zaneAtegaMaterials.push(zaMat);
+                zaneAtegaMaterials.push(zaOutlineMat);
+
+                return { toonMat, toonOutlineMat, litMat, zaMat, zaOutlineMat };
             });
 
             const hasMappedMats = toonMats.some((item) => typeof item === 'object' && item.toonMat);
@@ -2438,27 +2764,43 @@ function init() {
                 const toonMaterial = toonMats.map((item, idx) => (typeof item === 'object' && item.toonMat) ? item.toonMat : matList[idx]);
                 const toonOutlineMaterial = toonMats.map((item, idx) => (typeof item === 'object' && item.toonOutlineMat) ? item.toonOutlineMat : null);
                 const litMaterial = toonMats.map((item, idx) => (typeof item === 'object' && item.litMat) ? item.litMat : matList[idx]);
+                const zaMaterial = toonMats.map((item, idx) => (typeof item === 'object' && item.zaMat) ? item.zaMat : matList[idx]);
+                const zaOutlineMaterial = toonMats.map((item, idx) => (typeof item === 'object' && item.zaOutlineMat) ? item.zaOutlineMat : null);
 
                 const toonAssigned = toonMaterial.length === 1 ? toonMaterial[0] : toonMaterial;
                 const outlineAssigned = toonOutlineMaterial.length === 1 ? toonOutlineMaterial[0] : toonOutlineMaterial;
                 const litAssigned = litMaterial.length === 1 ? litMaterial[0] : litMaterial;
+                const zaAssigned = zaMaterial.length === 1 ? zaMaterial[0] : zaMaterial;
+                const zaOutlineAssigned = zaOutlineMaterial.length === 1 ? zaOutlineMaterial[0] : zaOutlineMaterial;
 
-                // Create the Inverse Hull outline mesh
-                // We physically clone the mesh so its outline renders automatically
-                // without needing to fight uniform sync issues.
+                // Create the Inverse Hull outline mesh for toon shader
                 const outlineMesh = child.clone(true);
                 outlineMesh.material = outlineAssigned;
-                outlineMesh.visible = useToonShader; // only visible if toon is on
-                child.parent.add(outlineMesh); // Add precisely where the parent is so animations sync
+                outlineMesh.visible = (shaderMode === 'toon');
+                child.parent.add(outlineMesh);
+
+                // Create the Inverse Hull outline mesh for ZaneAtega shader
+                const zaOutlineMesh = child.clone(true);
+                zaOutlineMesh.material = zaOutlineAssigned;
+                zaOutlineMesh.visible = (shaderMode === 'zaneatega');
+                child.parent.add(zaOutlineMesh);
 
                 materialBindings.push({
                     mesh: child,
                     originalMaterial,
                     toonMaterial: toonAssigned,
                     outlineMesh: outlineMesh,
-                    litMaterial: litAssigned
+                    litMaterial: litAssigned,
+                    zaneAtegaMaterial: zaAssigned,
+                    zaOutlineMesh: zaOutlineMesh
                 });
-                child.material = useToonShader ? toonAssigned : litAssigned;
+                if (shaderMode === 'toon') {
+                    child.material = toonAssigned;
+                } else if (shaderMode === 'zaneatega') {
+                    child.material = zaAssigned;
+                } else {
+                    child.material = litAssigned;
+                }
             }
         });
         // -----------------------------------------
@@ -2467,15 +2809,35 @@ function init() {
         _updateToonLightColorsFromSun();
         _applyToonLightingUniforms();
         _applyExposureShadowCompensation();
+        _applyZaneAtegaUniforms();
 
         toggleShaderBtn.addEventListener('click', () => {
-            useToonShader = !useToonShader;
+            // Cycle: toon -> basic -> zaneatega -> toon
+            if (shaderMode === 'toon') {
+                shaderMode = 'basic';
+            } else if (shaderMode === 'basic') {
+                shaderMode = 'zaneatega';
+            } else {
+                shaderMode = 'toon';
+            }
             materialBindings.forEach((binding) => {
-                binding.mesh.material = useToonShader ? binding.toonMaterial : binding.litMaterial;
-                binding.outlineMesh.visible = useToonShader;
+                if (shaderMode === 'toon') {
+                    binding.mesh.material = binding.toonMaterial;
+                    if (binding.outlineMesh) binding.outlineMesh.visible = true;
+                    if (binding.zaOutlineMesh) binding.zaOutlineMesh.visible = false;
+                } else if (shaderMode === 'basic') {
+                    binding.mesh.material = binding.litMaterial;
+                    if (binding.outlineMesh) binding.outlineMesh.visible = false;
+                    if (binding.zaOutlineMesh) binding.zaOutlineMesh.visible = false;
+                } else {
+                    binding.mesh.material = binding.zaneAtegaMaterial;
+                    if (binding.outlineMesh) binding.outlineMesh.visible = false;
+                    if (binding.zaOutlineMesh) binding.zaOutlineMesh.visible = true;
+                }
             });
-            toggleShaderBtn.textContent = useToonShader ? 'Toon Shader: ON' : 'Toon Shader: OFF';
-            toggleShaderBtn.classList.toggle('active', useToonShader);
+            const labels = { toon: 'Shader: Toon', basic: 'Shader: Basic', zaneatega: 'Shader: ZaneAtega' };
+            toggleShaderBtn.textContent = labels[shaderMode];
+            toggleShaderBtn.classList.toggle('active', shaderMode !== 'basic');
         });
 
         // Check for imported Camera
@@ -2568,10 +2930,11 @@ function init() {
             console.warn('[FingerUI] Fingertip bone not found! Check bone names above.');
         }
 
-        // If no specific finger mesh is found, fallback to the whole model for testing
+        // If no specific finger mesh is found, DO NOT fallback to the whole model for click detection.
+        // Instead, we leave it null so clicks anywhere don't trigger the transition unexpectedly.
         if (!fingerMesh) {
-            console.warn("Finger mesh not found! Using the whole model for click detection.");
-            fingerMesh = model;
+            console.warn("Finger mesh not found! Clicks on the model will NOT trigger the transition.");
+            // We do not set fingerMesh = model here anymore.
         }
 
         // Re-apply startup settings now that the model exists (restores chains).
@@ -2723,16 +3086,10 @@ function addRipple(u, v) {
 
 function checkIntersection(clientX, clientY) {
     if (window.__eonoIntro?.disableInteraction || window.__eonoIntro?.stopRender) return;
-    if (!fingerMesh) return;
 
     // Calculate mouse position in normalized device coordinates (-1 to +1)
     mouse.x = (clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(clientY / window.innerHeight) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-
-    // Check intersection with the finger (or model if fallback)
-    const intersects = raycaster.intersectObject(fingerMesh, true);
 
     // Visual Ripple Effect on Click/Tap (screen space)
     if (ripplePass) {
@@ -2741,6 +3098,13 @@ function checkIntersection(clientX, clientY) {
         const uvY = (mouse.y + 1) / 2;
         addRipple(uvX, uvY);
     }
+
+    raycaster.setFromCamera(mouse, camera);
+
+    if (!fingerMesh) return;
+
+    // Check intersection with the finger (or model if fallback)
+    const intersects = raycaster.intersectObject(fingerMesh, true);
 
     if (intersects.length > 0) {
         console.log("Finger tapped!");
@@ -2912,7 +3276,7 @@ function _applyLoadingAppearance() {
 
     // Remove default gradient if we have a bg image
     if (s.bgEnabled) {
-        overlay.style.background = 'transparent';
+        overlay.style.background = '#000';
     } else {
         overlay.style.background = 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%)';
     }
@@ -3155,13 +3519,18 @@ function animate() {
 function updateSunPosition() {
     if (!sky || !water || !sun) return;
 
-    const phi = THREE.MathUtils.degToRad(90 - oceanParams.elevation);
-    const theta = THREE.MathUtils.degToRad(oceanParams.azimuth + oceanParams.worldRotation);
+    const phi = THREE.MathUtils.degToRad(90 - _oceanVal('elevation'));
+    const theta = THREE.MathUtils.degToRad(_oceanVal('azimuth') + _oceanVal('worldRotation'));
 
     sun.setFromSphericalCoords(1, phi, theta);
 
     sky.material.uniforms['sunPosition'].value.copy(sun);
     water.material.uniforms['sunDirection'].value.copy(sun).normalize();
+
+    // Update global directional light position so shaders (like ZaneAtega) match the sky
+    if (window.dirLight) {
+        window.dirLight.position.copy(sun).multiplyScalar(20);
+    }
 
     // Use Sky as environment lighting for toon shader (optional)
     if (renderTargetEnv !== undefined) renderTargetEnv.dispose();
